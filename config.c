@@ -121,6 +121,7 @@ void configuration_bootprompt(sys_config_t *config)
     {
         int8_t ret;
 
+        printf("config>");
         ret = get_line(cmdbuf, sizeof(cmdbuf), &ignore_lf);
 
         if (ret == 0 || ret == -1) {
@@ -172,11 +173,6 @@ static void do_show(sys_config_t *config)
             "\tsensor2addr .......: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X\r\n"
             "\tsensor3addr .......: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X\r\n"
             "\tsensor4addr .......: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X\r\n"
-#ifdef _I2C_SLAVE_
-            "\r\n"
-            "\tslaveindex ........: %u\r\n"
-            "\tallowoverride .....: %u\r\n"
-#endif /* _I2C_SLAVE_ */
           , config->num_fans,
             config->fans_max,
             config->fans_min,
@@ -240,10 +236,6 @@ static void do_show(sys_config_t *config)
 #else
           , 0, 0, 0, 0, 0, 0, 0
 #endif /* DS18X20_ROMCODE_SIZE == 8 */
-#ifdef _I2C_SLAVE_
-          , config->i2c_index
-          , config->allow_override
-#endif /* _I2C_SLAVE_ */
         );
 
     printf("\r\n");
@@ -316,12 +308,6 @@ static void do_help(void)
         "\tsensor6addr [addr or 'none']\r\n"
 #endif /* _6SENSOR_ */
         "\t\tSets addresses of sensors\r\n\r\n"
-#ifdef _I2C_SLAVE_
-        "\tslaveindex [0-15]\r\n"
-        "\t\tSets I2C slave address. Results as addresses 0x30-0x3F.\r\n\r\n"
-        "\tallowoverride [0 or 1]\r\n"
-        "\t\tAllows fan state to be set via I2C interface\r\n\r\n"
-#endif /* _I2C_SLAVE_ */
     , MAXFANS);
 }
 
@@ -329,11 +315,12 @@ static void do_readtemp(void)
 {
     uint8_t i;
     uint8_t num_sensors;
-    uint8_t sensor_ids[MAXSENSORS][DS18X20_ROMCODE_SIZE];
+    uint8_t sensor_ids[MAX_SENSORS][DS18X20_ROMCODE_SIZE];
     int16_t reading;
-    
-    if (ds18x20_search_sensors(&num_sensors, sensor_ids))
-        printf("\r\nFound %u of %u maximum sensors\r\n", num_sensors, MAXSENSORS);
+    uint8_t ow_device_type = DS18B20_FAMILY_CODE;
+
+    if (onewire_search_devices(sensor_ids, &ow_device_type, &num_sensors, sizeof(ow_device_type)))
+        printf("\r\nFound %u of %u maximum sensors\r\n", num_sensors, MAX_SENSORS);
     else
         printf("\r\nHardware error searching for sensors\r\n");
 
@@ -462,14 +449,6 @@ static inline int8_t configuration_prompt_handler(char *text, sys_config_t *conf
         return parse_owid(config->sensor6_addr, arg);
     }
 #endif /* _6SENSOR_ */
-#ifdef _I2C_SLAVE_
-    else if (!stricmp(command, "slaveindex")) {
-        return parse_param(&config->i2c_index, PARAM_U8_SIDX, arg);
-    }
-    else if (!stricmp(command, "allowoverride")) {
-        return parse_param(&config->allow_override, PARAM_U8_BIT, arg);
-    }
-#endif /* _I2C_SLAVE_ */
     else if (!stricmp(command, "save")) {
         save_configuration(config);
         printf("\r\nConfiguration saved.\r\n\r\n");
@@ -480,7 +459,7 @@ static inline int8_t configuration_prompt_handler(char *text, sys_config_t *conf
         printf("\r\nDefault configuration loaded.\r\n\r\n");
         return 0;
     }
-    else if (!stricmp(command, "run")) {
+    else if (!stricmp(command, "exit")) {
         printf("\r\nStarting...\r\n");
         return -1;
     }
@@ -892,10 +871,6 @@ static void default_configuration(sys_config_t *config)
     memset(config->sensor2_addr, 0x00, DS18X20_ROMCODE_SIZE);
     memset(config->sensor3_addr, 0x00, DS18X20_ROMCODE_SIZE);
     memset(config->sensor4_addr, 0x00, DS18X20_ROMCODE_SIZE);
-#ifdef _I2C_SLAVE_
-    config->i2c_index = 0;
-    config->allow_override = 0;
-#endif /* _I2C_SLAVE_ */
 }
 
 static void save_configuration(sys_config_t *config)

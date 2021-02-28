@@ -29,6 +29,7 @@ void eeprom_read_data(uint8_t addr, uint8_t *bytes, uint8_t len);
 void eeprom_write_data(uint8_t addr, uint8_t *bytes, uint8_t len);
 char wdt_getch(void);
 void putch(char byte);
+int print_char(char byte, FILE *stream);
 
 
 #undef printf

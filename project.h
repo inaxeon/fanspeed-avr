@@ -26,7 +26,7 @@
 
 #define MAX_DESC             16
 #define MAXFANS              2
-#define MAXSENSORS           4
+#define MAX_SENSORS          4
 
 // Constants
 
@@ -37,7 +37,7 @@
 #define DEF_PCT_MIN          20      /* Idle speed */
 #define DEF_TEMP_MIN         180     /* Fan at minimum (18 degrees) */
 #define DEF_TEMP_MAX         300     /* Fan 100% on (30 degrees) */
-#define DEF_MIN_RPM          100     /* Minimum fan speed before restore kicks in */
+#define DEF_MIN_RPM          0       /* Minimum fan speed before restore kicks in */
 
 #define FAN1                 0
 #define FAN2                 1
@@ -58,6 +58,7 @@
 #define _OW_BITBANG_
 //#define _OW_DS2482_
 #ifdef _OW_DS2482_
+#define _I2C_
 #define _I2C_XFER_
 #define _I2C_XFER_BYTE_
 #define _I2C_DS2482_SPECIAL_

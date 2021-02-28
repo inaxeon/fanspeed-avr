@@ -49,6 +49,7 @@ int print_char(char byte, FILE *stream)
 
 void putch(char byte)
 {
+    while (console_busy());
     console_put(byte);
 }
 

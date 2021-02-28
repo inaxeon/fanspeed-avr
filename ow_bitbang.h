@@ -13,10 +13,10 @@
 
 bool owbitbang_init(void);
 bool owbitbang_bus_reset(bool *presense_detect);
-bool owbitbang_bus_idle(void);
-bool owbitbang_command(uint8_t command, uint8_t *id);
-uint8_t owbitbang_byte_xch(uint8_t b);
+bool owbitbang_read(uint8_t *buf, uint8_t len);
 uint8_t owbitbang_rom_search(uint8_t diff, uint8_t *id);
+bool owbitbang_select(const uint8_t *id);
+bool owbitbang_write(const uint8_t *data, uint8_t len);
 
 #endif /* __OW_BITBANG_H__ */
 

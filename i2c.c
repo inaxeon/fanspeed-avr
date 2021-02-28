@@ -34,6 +34,8 @@
 #define I2C_READ    1
 #define I2C_WRITE   0
 
+#ifdef _I2C_
+
 void i2c_init(uint16_t freq_khz)
 {
     TWSR = 0;
@@ -358,3 +360,5 @@ fail:
 }
 
 #endif /* _I2C_DS2482_SPECIAL_ */
+
+#endif /* _I2C_ */

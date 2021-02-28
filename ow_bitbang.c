@@ -158,6 +158,14 @@ uint8_t owbitbang_byte_xch(uint8_t b)
     return b;
 }
 
+bool owbitbang_read(uint8_t *buf, uint8_t len)
+{
+    while (len--)
+        *buf++ = owbitbang_byte_xch(0xFF);
+
+    return true;
+}
+
 bool owbitbang_read_byte(uint8_t *ret)
 {
     *ret = owbitbang_byte_xch(0xFF);
@@ -223,8 +231,7 @@ uint8_t owbitbang_rom_search(uint8_t diff, uint8_t *id)
     return next_diff;                          /* To continue search */
 }
 
-
-bool owbitbang_command(uint8_t command, uint8_t *id)
+bool owbitbang_select(const uint8_t *id)
 {
     bool presense;
     uint8_t i;
@@ -247,7 +254,13 @@ bool owbitbang_command(uint8_t command, uint8_t *id)
         owbitbang_byte_xch(OW_SKIP_ROM);  /* To all devices */
     }
 
-    owbitbang_byte_xch(command);
+    return true;
+}
+
+bool owbitbang_write(const uint8_t *data, uint8_t len)
+{
+    while (len--)
+        owbitbang_byte_xch(*data++);
     
     return true;
 }

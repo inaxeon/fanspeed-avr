@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <avr/pgmspace.h>
@@ -33,6 +34,7 @@
 
 #include "iopins.h"
 #include "timer.h"
+#include "onewire.h"
 #include "ds18x20.h"
 #include "onewire.h"
 #include "config.h"
@@ -46,7 +48,7 @@
 char _g_dotBuf[MAX_DESC];
 
 typedef struct {
-    uint8_t sensor_ids[MAXSENSORS][DS18X20_ROMCODE_SIZE];
+    uint8_t sensor_ids[MAX_SENSORS][DS18X20_ROMCODE_SIZE];
     uint8_t num_sensors;
     uint8_t tach_timeout;
     uint8_t last_portb;
@@ -54,7 +56,7 @@ typedef struct {
     uint16_t tach_rpm[MAXFANS];
     uint8_t hyst_lockout;
     uint8_t sensor_state;
-    int16_t temp_result[MAXSENSORS];
+    int16_t temp_result[MAX_SENSORS];
 } sys_runstate_t;
 
 sys_config_t _g_cfg;
@@ -71,7 +73,9 @@ static void main_process(sys_runstate_t *rs, sys_config_t *config);
 static void stall_check(sys_runstate_t *rs, sys_config_t *config);
 uint8_t build_sensorlist_from_config(sys_runstate_t *rs, sys_config_t *config);
 
-ISR(PCINT0_vect)
+FILE uart_str = FDEV_SETUP_STREAM(print_char, NULL, _FDEV_SETUP_RW);
+
+ISR(PCINT1_vect)
 {
     if (!(_g_rs.last_portb & _BV(F1TACH)) && IO_IN_HIGH(F1TACH))
         _g_rs.tach_count[0]++;
@@ -108,26 +112,19 @@ int main(void)
     sys_runstate_t *rs = &_g_rs;
     sys_config_t *config = &_g_cfg;
 
-    /////////// WDT INIT?
+    wdt_enable(WDTO_4S);
+    g_irq_enable();
     io_init();
-    g_irq_disable();
     timer0_init();
-    timer1_init();
-
-#if defined(__PIC18_K40__) || defined(__PIC18_K42__)
-    /* Tacho inputs 3,4,5,6 */
-    TRISAbits.TRISA4 = 1;
-    TRISCbits.TRISC0 = 1;
-    TRISCbits.TRISC5 = 1;
-    TRISAbits.TRISA2 = 1;
-#endif
 
     usart1_open(USART_CONT_RX | USART_BRGH, (((F_CPU / UART_BAUD) / 16) - 1));
-    
+    stdout = &uart_str;
+
 #ifdef _OW_DS2482_
     i2c_init(I2C_FREQ);
 #endif /* _OW_DS2482_ */
     ow_init();
+
     
     load_configuration(config);
 
@@ -137,15 +134,12 @@ int main(void)
 
     configuration_bootprompt(config);
 
-    /* Enable Interrupts */
-    g_irq_enable();
-
     /* Clear tachos */
     rs->tach_timeout = 0;
     rs->last_portb = PORTB;
     rs->sensor_state = 0;
 
-    for (i = 0; i < MAXSENSORS; i++)
+    for (i = 0; i < MAX_SENSORS; i++)
         rs->temp_result[i] = 0;
 
     for (i = 0; i < MAXFANS; i++)
@@ -160,14 +154,15 @@ int main(void)
     if (config->manual_assignment)
     {
         rs->num_sensors = build_sensorlist_from_config(rs, config);
-        printf("\r\nManually assigned %u of %u maximum sensors\r\n", rs->num_sensors, MAXSENSORS);
+        printf("\r\nManually assigned %u of %u maximum sensors\r\n", rs->num_sensors, MAX_SENSORS);
     }
     else
-    {        
-        if (ds18x20_search_sensors(&rs->num_sensors, rs->sensor_ids))
-            printf("\r\nFound %u of %u maximum sensors\r\n", rs->num_sensors, MAXSENSORS);
-        else
+    {
+        uint8_t ow_device_type = DS18B20_FAMILY_CODE;
+        if (onewire_search_devices(rs->sensor_ids, &ow_device_type, &rs->num_sensors, sizeof(ow_device_type)))
             printf("\r\nHardware error searching for sensors\r\n");
+        else
+            printf("\r\nFound %u of %u maximum sensors\r\n", rs->num_sensors, MAX_SENSORS);
     }
 
     if (rs->num_sensors == 0)
@@ -181,13 +176,15 @@ int main(void)
     
     for (;;)
     {
-       main_process(rs, config);
+        main_process(rs, config);
 
-       /* Don't do the stall check straight away */
-       if (stall_check_cycleskip < 5)
-           stall_check_cycleskip++;
-       else
-           stall_check(rs, config);
+        /* Don't do the stall check straight away */
+        if (stall_check_cycleskip < 5)
+            stall_check_cycleskip++;
+        else
+            stall_check(rs, config);
+
+        wdt_reset();
     }
 }
 
@@ -207,6 +204,8 @@ static void io_init(void)
     PCICR |= _BV(PCIE1);
     PCMSK1 |= _BV(PCINT10);
     PCMSK1 |= _BV(PCINT11);
+
+    _g_rs.last_portb = F1TACH_PIN;
 }
 
 static void main_process(sys_runstate_t *rs, sys_config_t *config)
@@ -442,7 +441,7 @@ uint8_t build_sensorlist_from_config(sys_runstate_t *rs, sys_config_t *config)
     memcpy(rs->sensor_ids[2], config->sensor3_addr, DS18X20_ROMCODE_SIZE);
     memcpy(rs->sensor_ids[3], config->sensor4_addr, DS18X20_ROMCODE_SIZE);
 
-    for (i = 0; i < MAXSENSORS; i++)
+    for (i = 0; i < MAX_SENSORS; i++)
     {
         if (rs->sensor_ids[i][0] == 0x00)
             break;

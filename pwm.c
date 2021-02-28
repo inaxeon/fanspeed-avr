@@ -20,7 +20,7 @@
  */
 
 #ifndef __PWM_H__
-#define	__PWM_H__
+#define __PWM_H__
 
 #include "project.h"
 
@@ -46,11 +46,31 @@ void pwm_setduty(uint8_t pwm, uint8_t pct)
 
     duty = ((uint32_t)pct * PWM_BASE) / 100;
 
-    if (pwm)
-        OCR1B = duty;
+    // Kludge 1: 0x0000 is not 0%. Have to disable PWM
+    if (duty == 0x0000)
+    {
+        if (pwm)
+            TCCR1A &= ~_BV(COM1B1);
+        else
+            TCCR1A &= ~_BV(COM1A1);
+    }
     else
-        OCR1A = duty;
+    {
+        // Kludge 2: 0x1FF is 100% on AVR. Not 0x200.
+        if (duty == 0x0200)
+            duty = 0x01FF;
+
+        if (pwm)
+        {
+            TCCR1A |= _BV(COM1B1);
+            OCR1B = duty;
+        }
+        else
+        {
+            TCCR1A |= _BV(COM1A1);
+            OCR1A = duty;
+        }
+    }
 }
 
-#endif	/* __PWM_H__ */
-
+#endif /* __PWM_H__ */

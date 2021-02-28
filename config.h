@@ -38,10 +38,6 @@ typedef struct {
     uint8_t sensor2_addr[DS18X20_ROMCODE_SIZE];
     uint8_t sensor3_addr[DS18X20_ROMCODE_SIZE];
     uint8_t sensor4_addr[DS18X20_ROMCODE_SIZE];
-#ifdef _I2C_SLAVE_
-    uint8_t i2c_index;
-    uint8_t allow_override;
-#endif /* _I2C_SLAVE_ */
 } sys_config_t;
 
 void configuration_bootprompt(sys_config_t *config);

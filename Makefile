@@ -9,11 +9,11 @@
 # Fixes clash between windows and coreutils mkdir. Comment out the below line to compile on Linux
 COREUTILS  = C:/Projects/coreutils/bin/
 
-DEVICE     = atmega328
-PROGRAMMER = -c arduino -P COM3 -c stk500 -b 115200 
-SRCS       = main.c timer.c ds2482.c ow_bitbang.c ds18x20.c config.c util.c usart_buffered.c i2c.c pwm.c crc8.c
+DEVICE     = atmega328p
+PROGRAMMER = -c atmelice_isp -V
+SRCS       = main.c timer.c onewire.c ds2482.c ow_bitbang.c ds18x20.c config.c util.c usart_buffered.c i2c.c pwm.c crc8.c
 OBJS       = $(SRCS:.c=.o)
-FUSES      = -U lfuse:w:0xDC:m -U hfuse:w:0xD1:m -U efuse:w:0xFC:m
+FUSES      = -U lfuse:w:0xDF:m -U hfuse:w:0xD1:m -U efuse:w:0xFC:m
 DEPDIR     = deps
 DEPFLAGS   = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
 RM         = rm
@@ -22,7 +22,7 @@ MKDIR      = $(COREUTILS)mkdir
 
 POSTCOMPILE = $(MV) $(DEPDIR)/$*.Td $(DEPDIR)/$*.d && touch $@
 
-AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -V
+AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE)
 COMPILE = avr-gcc -Wall -Os $(DEPFLAGS) -mmcu=$(DEVICE)
 
 all:	fanspeed.hex
