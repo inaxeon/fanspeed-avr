@@ -26,6 +26,8 @@
 #define IO_HIGH(pin) pin##_PORT |= _BV(pin)
 #define IO_LOW(pin) pin##_PORT &= ~_BV(pin)
 
+#define IO_TOGGLE(pin) (pin##_PORT) ^= _BV(pin)
+
 #define IO_IN_HIGH(pin) ((pin##_PIN & _BV(pin)) == _BV(pin))
 #define IO_IN_LOW(pin) ((pin##_PIN & _BV(pin)) == 0x00)
 

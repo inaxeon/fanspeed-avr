@@ -13,6 +13,7 @@
 
 bool owbitbang_init(void);
 bool owbitbang_bus_reset(bool *presense_detect);
+bool owbitbang_bit_io(bool *bit);
 bool owbitbang_read(uint8_t *buf, uint8_t len);
 uint8_t owbitbang_rom_search(uint8_t diff, uint8_t *id);
 bool owbitbang_select(const uint8_t *id);

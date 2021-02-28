@@ -97,7 +97,7 @@ bool owbitbang_bus_reset(bool *presense_detect)
  *
  * Nothing else is needed.
  */
-static uint8_t owbitbang_bit_io(uint8_t b)
+static uint8_t owbitbang_bit_xch(uint8_t b)
 {
     uint8_t intsave;
 
@@ -142,6 +142,12 @@ static uint8_t owbitbang_bit_io(uint8_t b)
     return b;
 }
 
+bool owbitbang_bit_io(bool *bit)
+{
+    *bit = owbitbang_bit_xch(*bit);
+    return true;
+}
+
 uint8_t owbitbang_byte_xch(uint8_t b)
 {
     uint8_t i = 8;
@@ -149,7 +155,7 @@ uint8_t owbitbang_byte_xch(uint8_t b)
 
     do
     {
-        j = owbitbang_bit_io(b & 1);
+        j = owbitbang_bit_xch(b & 1);
         b >>= 1;
         if (j)
             b |= 0x80;
@@ -193,8 +199,8 @@ uint8_t owbitbang_rom_search(uint8_t diff, uint8_t *id)
         j = 8;                                 /* 8 bits */
         do
         {
-            b = owbitbang_bit_io(1);           /* Read bit */
-            if (owbitbang_bit_io(1))
+            b = owbitbang_bit_xch(1);           /* Read bit */
+            if (owbitbang_bit_xch(1))
             {                                  /* Read complement bit */
                 if (b)
                 {                              /* 0b11 */
@@ -214,7 +220,7 @@ uint8_t owbitbang_rom_search(uint8_t diff, uint8_t *id)
                 }
             }
 
-            owbitbang_bit_io(b);               /* Write bit */
+            owbitbang_bit_xch(b);               /* Write bit */
             *id >>= 1;
 
             if (b)

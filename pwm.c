@@ -50,9 +50,15 @@ void pwm_setduty(uint8_t pwm, uint8_t pct)
     if (duty == 0x0000)
     {
         if (pwm)
+        {
+            IO_LOW(F2ON);
             TCCR1A &= ~_BV(COM1B1);
+        }
         else
+        {
+            IO_LOW(F1ON);
             TCCR1A &= ~_BV(COM1A1);
+        }
     }
     else
     {
@@ -62,11 +68,13 @@ void pwm_setduty(uint8_t pwm, uint8_t pct)
 
         if (pwm)
         {
+            IO_HIGH(F2ON);
             TCCR1A |= _BV(COM1B1);
             OCR1B = duty;
         }
         else
         {
+            IO_HIGH(F1ON);
             TCCR1A |= _BV(COM1A1);
             OCR1A = duty;
         }

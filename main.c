@@ -93,6 +93,7 @@ ISR(TIMER0_OVF_vect)
     if (_g_rs.tach_timeout == 200)
     {
         uint8_t i = 0;
+        IO_TOGGLE(SP2);
         for (i = 0; i < MAXFANS; i++)
         {
             /* Sampled every 2 seconds. Multiply count by 30 to get RPM */
@@ -124,7 +125,6 @@ int main(void)
     i2c_init(I2C_FREQ);
 #endif /* _OW_DS2482_ */
     ow_init();
-
     
     load_configuration(config);
 
@@ -170,6 +170,7 @@ int main(void)
 
     printf("Using %u of %u maximum fans\r\n", config->num_fans, MAXFANS);
 
+    timer0_start();
 	wdt_reset();
 
     printf("Press Ctrl+D at any time to reset\r\n");

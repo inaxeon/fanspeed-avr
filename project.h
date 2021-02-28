@@ -50,7 +50,7 @@
 #define UART_BAUD            9600
 #define I2C_FREQ             400
 #define F_CPU                12288000
-#define TIMER0VAL            196
+#define TIMER0VAL            136
 
 // Features
 
