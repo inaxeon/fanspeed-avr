@@ -69,6 +69,7 @@
 
 #define _1DP_BASE            10
 #define I2C_FREQ             400
+// 12.288 MHz is used because it generates accurate baud up to 38400, and it provides the required 24 KHz PWM for the fans
 #define F_CPU                12288000
 #define TIMER0VAL            136
 

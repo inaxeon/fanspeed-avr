@@ -632,7 +632,7 @@ static inline int8_t configuration_prompt_handler(char *text, sys_config_t *conf
         printf("\r\nDefault configuration loaded.\r\n\r\n");
         return 0;
     }
-    else if (!stricmp(command, "run")) {
+    else if (!stricmp(command, "exit")) {
         printf("\r\nStarting...\r\n");
         return -1;
     }

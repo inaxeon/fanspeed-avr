@@ -28,28 +28,17 @@
 #include "ds2482.h"
 #include "crc8.h"
 
-#define OW_SEARCH_FIRST           0xFF
-#define OW_PRESENCE_ERR           0xFF
-#define OW_DATA_ERR               0xFE
-#define OW_LAST_DEVICE            0x00
+#define OW_SEARCH_FIRST             0xFF
+#define OW_PRESENCE_ERR             0xFF
+#define OW_DATA_ERR                 0xFE
+#define OW_LAST_DEVICE              0x00
 
-#define DS18X20_READ_ROM          0x33
-#define DS18X20_SP_SIZE           9
-#define DS18X20_READ              0xBE
-#define DS18X20_CONVERT_T         0x44
+#define DS18X20_READ_ROM            0x33
+#define DS18X20_SP_SIZE             9
+#define DS18X20_READ                0xBE
+#define DS18X20_CONVERT_T           0x44
 
-#define DS18B20_CONF_REG          4
-#define DS18B20_9_BIT             0
-#define DS18B20_10_BIT            (1 << 5)
-#define DS18B20_11_BIT            (1 << 6)
-#define DS18B20_12_BIT            ((1 << 6) | (1 << 5))
-#define DS18B20_RES_MASK          ((1 << 6) | (1 << 5))
-#define DS18B20_9_BIT_UNDF        ((1 << 0) | (1 << 1) | (1 << 2))
-#define DS18B20_10_BIT_UNDF       ((1 << 0) | (1 << 1))
-#define DS18B20_11_BIT_UNDF       ((1 << 0))
-#define DS18B20_12_BIT_UNDF       0
-
-#define DS18X20_INVALID_DECICELSIUS  2000
+#define DS18X20_INVALID_DECICELSIUS 0x7FFF
 
 static bool ds18x20_read_scratchpad(uint8_t *id, uint8_t *sp, uint8_t n)
 {

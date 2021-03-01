@@ -49,13 +49,13 @@ typedef struct {
     uint8_t sensor_ids[MAX_SENSORS][OW_ROMCODE_SIZE];
     uint8_t num_sensors;
     uint8_t tach_timeout;
-    uint8_t last_portb;
+    uint8_t last_portc;
     uint16_t tach_count[MAX_FANS];
     uint16_t tach_rpm[MAX_FANS];
 #ifdef _SINGLEZONE_
-    uint8_t hyst_lockout;
+    bool hyst_lockout;
 #else
-    uint8_t hyst_lockout[MAX_FANS];
+    bool hyst_lockout[MAX_FANS];
 #endif
     uint8_t sensor_state;
     int16_t temp_result[MAX_SENSORS];
@@ -70,7 +70,7 @@ static void fan_set_duty(uint8_t pwm, uint8_t pct);
 static void print_duty(uint8_t duty);
 static void print_fan(uint8_t fan, uint16_t tach_rpm, uint8_t nl);
 static void print_temp(uint8_t temp, int16_t result, const char *desc, uint8_t nl);
-static uint8_t calc_pwm_duty(int16_t measured, uint8_t pct_max, uint8_t pct_min, int16_t temp_max, int16_t temp_min, uint16_t hyst, uint8_t min_off, uint8_t *hyst_lockout);
+static uint8_t calc_pwm_duty(int16_t measured, uint8_t pct_max, uint8_t pct_min, int16_t temp_max, int16_t temp_min, uint16_t hyst, uint8_t min_off, bool *hyst_lockout);
 static void main_process(sys_runstate_t *rs, sys_config_t *config);
 static void stall_check(sys_runstate_t *rs, sys_config_t *config);
 uint8_t build_sensorlist_from_config(sys_runstate_t *rs, sys_config_t *config);
@@ -79,13 +79,13 @@ FILE uart_str = FDEV_SETUP_STREAM(print_char, NULL, _FDEV_SETUP_RW);
 
 ISR(PCINT1_vect)
 {
-    if (!(_g_rs.last_portb & _BV(F1TACH)) && IO_IN_HIGH(F1TACH))
+    if (!(_g_rs.last_portc & _BV(F1TACH)) && IO_IN_HIGH(F1TACH))
         _g_rs.tach_count[0]++;
 
-    if (!(_g_rs.last_portb & _BV(F2TACH)) && IO_IN_HIGH(F2TACH))
+    if (!(_g_rs.last_portc & _BV(F2TACH)) && IO_IN_HIGH(F2TACH))
         _g_rs.tach_count[1]++;
 
-    _g_rs.last_portb = F1TACH_PIN;
+    _g_rs.last_portc = F1TACH_PIN;
 }
 
 ISR(TIMER0_OVF_vect)
@@ -139,7 +139,7 @@ int main(void)
 
     /* Clear tachos */
     rs->tach_timeout = 0;
-    rs->last_portb = PORTB;
+    rs->last_portc = PORTB;
     rs->sensor_state = 0;
 
     for (i = 0; i < MAX_SENSORS; i++)
@@ -153,10 +153,10 @@ int main(void)
 
     /* Hysteresis lockout on so we don't start fans if temp is inside hysteresis window */
 #ifdef _SINGLEZONE_
-    rs->hyst_lockout = 1;
+    rs->hyst_lockout = true;
 #else
     for (i = 0; i < MAX_FANS; i++)
-        rs->hyst_lockout[i] = 1;
+        rs->hyst_lockout[i] = true;
 #endif /* _SINGLEZONE_ */
     
     if (config->manual_assignment)
@@ -216,7 +216,7 @@ static void io_init(void)
     PCMSK1 |= _BV(PCINT10);
     PCMSK1 |= _BV(PCINT11);
 
-    _g_rs.last_portb = F1TACH_PIN;
+    _g_rs.last_portc = F1TACH_PIN;
 }
 
 #ifdef _SINGLEZONE_
@@ -527,7 +527,7 @@ static char *dots_for(const char *str)
 }
 
 static uint8_t calc_pwm_duty(int16_t measured, uint8_t pct_max, uint8_t pct_min, int16_t temp_max,
-        int16_t temp_min, uint16_t hyst, uint8_t min_off, uint8_t *hyst_lockout)
+        int16_t temp_min, uint16_t hyst, uint8_t min_off, bool *hyst_lockout)
 {
     int16_t temprange = temp_max - temp_min;
     int16_t pctrange = pct_max - pct_min;
@@ -540,14 +540,14 @@ static uint8_t calc_pwm_duty(int16_t measured, uint8_t pct_max, uint8_t pct_min,
     {
         if (measured < (temp_min - hyst))
         {
-            *hyst_lockout = 1;
+            *hyst_lockout = true;
             return 0;
         }
 
         if (*hyst_lockout)
         {
             if (measured >= temp_min)
-                *hyst_lockout = 0;
+                *hyst_lockout = false;
             else
                 return 0;
         }
