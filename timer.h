@@ -1,6 +1,6 @@
 /*
  *   File:   timer.h
- *   Author: Matt
+ *   Author: Matthew Millman
  *
  *   Created on 19 May 2018, 18:02
  * 

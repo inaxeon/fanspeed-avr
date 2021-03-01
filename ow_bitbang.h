@@ -1,6 +1,6 @@
 /*
  * File:   ow_bitbang.h
- * Author: Matt
+ *   Author: Matthew Millman
  *
  * Created on 22 July 2016, 16:50
  */

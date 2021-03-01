@@ -1,6 +1,6 @@
 /*
  *   File:   usart_buffered.c
- *   Author: Matt
+ *   Author: Matthew Millman
  *
  *   Created on 22 May 2018, 16:32
  *

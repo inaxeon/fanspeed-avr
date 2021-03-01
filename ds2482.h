@@ -1,6 +1,6 @@
 /*
  *   File:   ds2482.h
- *   Author: Matt
+ *   Author: Matthew Millman
  *
  *   Created on 22 July 2016, 11:13
  * 

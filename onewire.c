@@ -1,6 +1,6 @@
 /*
  *   File:   ds18x20.c
- *   Author: Matt
+ *   Author: Matthew Millman
  *
  *   Created on 26 July 2016, 11:13
  *

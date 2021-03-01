@@ -1,6 +1,6 @@
 /*
  *   File:   usart.h
- *   Author: Matt
+ *   Author: Matthew Millman
  *
  *   Created on 13 November 2017, 10:32
  * 
