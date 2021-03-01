@@ -35,10 +35,10 @@
 #include "iopins.h"
 #include "timer.h"
 #include "config.h"
+#include "onewire.h"
 #include "util.h"
 #include "pwm.h"
 #include "usart.h"
-#include "onewire.h"
 #include "i2c.h"
 #include "ds2482.h"
 #include "ds18x20.h"
@@ -46,7 +46,7 @@
 char _g_dotBuf[MAX_DESC];
 
 typedef struct {
-    uint8_t sensor_ids[MAX_SENSORS][DS18X20_ROMCODE_SIZE];
+    uint8_t sensor_ids[MAX_SENSORS][OW_ROMCODE_SIZE];
     uint8_t num_sensors;
     uint8_t tach_timeout;
     uint8_t last_portb;
@@ -573,11 +573,11 @@ static uint8_t calc_pwm_duty(int16_t measured, uint8_t pct_max, uint8_t pct_min,
 uint8_t build_sensorlist_from_config(sys_runstate_t *rs, sys_config_t *config)
 {
     uint8_t i;
-    memcpy(rs->sensor_ids[0], config->sensor1_addr, DS18X20_ROMCODE_SIZE);
-    memcpy(rs->sensor_ids[1], config->sensor2_addr, DS18X20_ROMCODE_SIZE);
+    memcpy(rs->sensor_ids[0], config->sensor1_addr, OW_ROMCODE_SIZE);
+    memcpy(rs->sensor_ids[1], config->sensor2_addr, OW_ROMCODE_SIZE);
 #ifdef _SINGLEPATH_
-    memcpy(rs->sensor_ids[2], config->sensor3_addr, DS18X20_ROMCODE_SIZE);
-    memcpy(rs->sensor_ids[3], config->sensor4_addr, DS18X20_ROMCODE_SIZE);
+    memcpy(rs->sensor_ids[2], config->sensor3_addr, OW_ROMCODE_SIZE);
+    memcpy(rs->sensor_ids[3], config->sensor4_addr, OW_ROMCODE_SIZE);
 #endif /* _SINGLEPATH_ */
 
     for (i = 0; i < MAX_SENSORS; i++)

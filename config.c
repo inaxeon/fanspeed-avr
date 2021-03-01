@@ -405,10 +405,10 @@ static void default_configuration(sys_config_t *config)
     config->temp3_desc[0] = 0;
     config->temp4_desc[0] = 0;
     config->manual_assignment = false;
-    memset(config->sensor1_addr, 0x00, DS18X20_ROMCODE_SIZE);
-    memset(config->sensor2_addr, 0x00, DS18X20_ROMCODE_SIZE);
-    memset(config->sensor3_addr, 0x00, DS18X20_ROMCODE_SIZE);
-    memset(config->sensor4_addr, 0x00, DS18X20_ROMCODE_SIZE);
+    memset(config->sensor1_addr, 0x00, OW_ROMCODE_SIZE);
+    memset(config->sensor2_addr, 0x00, OW_ROMCODE_SIZE);
+    memset(config->sensor3_addr, 0x00, OW_ROMCODE_SIZE);
+    memset(config->sensor4_addr, 0x00, OW_ROMCODE_SIZE);
 }
 
 #else /* _SINGLEPATH_ */
@@ -678,8 +678,8 @@ static void default_configuration(sys_config_t *config)
     config->temp1_desc[0] = 0;
     config->temp2_desc[0] = 0;
     config->manual_assignment = false;
-    memset(config->sensor1_addr, 0x00, DS18X20_ROMCODE_SIZE);
-    memset(config->sensor2_addr, 0x00, DS18X20_ROMCODE_SIZE);
+    memset(config->sensor1_addr, 0x00, OW_ROMCODE_SIZE);
+    memset(config->sensor2_addr, 0x00, OW_ROMCODE_SIZE);
 }
 
 #endif /* !_SINGLEPATH_ */
@@ -688,7 +688,7 @@ static void do_readtemp(void)
 {
     uint8_t i;
     uint8_t num_sensors;
-    uint8_t sensor_ids[MAX_SENSORS][DS18X20_ROMCODE_SIZE];
+    uint8_t sensor_ids[MAX_SENSORS][OW_ROMCODE_SIZE];
     int16_t reading;
     uint8_t ow_device_type = DS18B20_FAMILY_CODE;
 
@@ -717,18 +717,14 @@ static void do_readtemp(void)
                 "\tBurned in ID .........: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X\r\n",
                 i + 1,
                 fixedpoint_arg(reading, reading),
-                sensor_ids[i][0]
-#if DS18X20_ROMCODE_SIZE == 8
-              , sensor_ids[i][1],
+                sensor_ids[i][0],
+                sensor_ids[i][1],
                 sensor_ids[i][2],
                 sensor_ids[i][3],
                 sensor_ids[i][4],
                 sensor_ids[i][5],
                 sensor_ids[i][6],
                 sensor_ids[i][7]
-#else
-              , 0, 0, 0, 0, 0, 0, 0
-#endif /* DS18X20_ROMCODE_SIZE == 8 */
             );
         }
         else
@@ -844,7 +840,7 @@ static int8_t parse_owid(uint8_t *param, char *arg)
     uint8_t i = 0;
     if (!stricmp(arg, "none"))
     {
-        memset(param, 0x00, DS18X20_ROMCODE_SIZE);
+        memset(param, 0x00, OW_ROMCODE_SIZE);
         return 0;
     }
     char *s = strtok(arg, ":");
@@ -854,7 +850,7 @@ static int8_t parse_owid(uint8_t *param, char *arg)
             return 1;
         param[i] = (uint8_t)strtoul(s, NULL, 16);
         s = strtok(NULL, ":");
-    } while (++i < DS18X20_ROMCODE_SIZE);
+    } while (++i < OW_ROMCODE_SIZE);
     return 0;
 }
 

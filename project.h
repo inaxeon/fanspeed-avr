@@ -25,7 +25,7 @@
 // High level features
 
 // Uncomment to enable single thermal zone build
-#define _SINGLEPATH_
+//#define _SINGLEPATH_
 
 // Uncomment to use DS2482 onewire bus master instead of bitbang
 //#define _OW_DS2482_

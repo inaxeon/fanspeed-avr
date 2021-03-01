@@ -192,7 +192,7 @@ uint8_t owbitbang_rom_search(uint8_t diff, uint8_t *id)
     owbitbang_byte_xch(OW_SEARCH_ROM);         /* ROM search command */
     next_diff = OW_LAST_DEVICE;                /* Unchanged on last device */
 
-    i = DS18X20_ROMCODE_SIZE * 8;                   /* 8 bytes */
+    i = OW_ROMCODE_SIZE * 8;                   /* 8 bytes */
 
     do
     {
@@ -248,7 +248,7 @@ bool owbitbang_select(const uint8_t *id)
     if (id)
     {
         owbitbang_byte_xch(OW_MATCH_ROM); /* To a single device */
-        i = DS18X20_ROMCODE_SIZE;
+        i = OW_ROMCODE_SIZE;
         do
         {
             owbitbang_byte_xch(*id);

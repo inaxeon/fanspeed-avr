@@ -30,8 +30,6 @@
 #define OW_COMMS_ERR    0xFD
 #define OW_LAST_DEVICE  0x00        /* Last device found */
 
-#define OW_ROMCODE_SIZE 8
-
 bool onewire_search_devices(uint8_t(*sensor_ids)[OW_ROMCODE_SIZE], uint8_t *family_codes, uint8_t *counts, uint8_t family_codes_len);
 
 #ifdef _OW_BITBANG_

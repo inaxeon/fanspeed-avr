@@ -25,6 +25,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define OW_ROMCODE_SIZE 8
+
 typedef struct {
     uint16_t magic;
 #ifdef _SINGLEPATH_
@@ -64,11 +66,11 @@ typedef struct {
     char temp2_desc[MAX_DESC];
 #endif /* _SINGLEPATH_ */
     bool manual_assignment;
-    uint8_t sensor1_addr[DS18X20_ROMCODE_SIZE];
-    uint8_t sensor2_addr[DS18X20_ROMCODE_SIZE];
+    uint8_t sensor1_addr[OW_ROMCODE_SIZE];
+    uint8_t sensor2_addr[OW_ROMCODE_SIZE];
 #ifdef _SINGLEPATH_
-    uint8_t sensor3_addr[DS18X20_ROMCODE_SIZE];
-    uint8_t sensor4_addr[DS18X20_ROMCODE_SIZE];
+    uint8_t sensor3_addr[OW_ROMCODE_SIZE];
+    uint8_t sensor4_addr[OW_ROMCODE_SIZE];
 #endif /* _SINGLEPATH_ */
 } sys_config_t;
 
