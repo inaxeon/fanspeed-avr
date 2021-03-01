@@ -178,11 +178,6 @@ bool usart1_busy(void)
     return (_g_usart_txhead != _g_usart_txtail || (UCSRAA & _BV(UDREA)) == 0);
 }
 
-void usart1_clear_oerr(void)
-{
-
-}
-
 uint8_t usart1_get_last_rx_error(void)
 {
     return _g_usart_last_rx_error;

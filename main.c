@@ -2,7 +2,7 @@
  *   File:   main.c
  *   Author: Matthew Millman
  *
- *   Fan speed controller. Single thermal path, OSS AVR Version.
+ *   Fan speed controller. OSS AVR Version.
  *
  *   Created on 26 August 2014, 20:27
  *   Ported from MPLAB XC8 project 17 December 2020, 07:54
@@ -34,16 +34,14 @@
 
 #include "iopins.h"
 #include "timer.h"
-#include "onewire.h"
-#include "ds18x20.h"
-#include "onewire.h"
 #include "config.h"
 #include "util.h"
 #include "pwm.h"
 #include "usart.h"
-#ifdef _OW_DS2482_
+#include "onewire.h"
 #include "i2c.h"
-#endif /* _OW_DS2482_ */
+#include "ds2482.h"
+#include "ds18x20.h"
 
 char _g_dotBuf[MAX_DESC];
 
@@ -52,9 +50,13 @@ typedef struct {
     uint8_t num_sensors;
     uint8_t tach_timeout;
     uint8_t last_portb;
-    uint16_t tach_count[MAXFANS];
-    uint16_t tach_rpm[MAXFANS];
+    uint16_t tach_count[MAX_FANS];
+    uint16_t tach_rpm[MAX_FANS];
+#ifdef _SINGLEPATH_
     uint8_t hyst_lockout;
+#else
+    uint8_t hyst_lockout[MAX_FANS];
+#endif
     uint8_t sensor_state;
     int16_t temp_result[MAX_SENSORS];
 } sys_runstate_t;
@@ -94,7 +96,7 @@ ISR(TIMER0_OVF_vect)
     {
         uint8_t i = 0;
         IO_TOGGLE(SP2);
-        for (i = 0; i < MAXFANS; i++)
+        for (i = 0; i < MAX_FANS; i++)
         {
             /* Sampled every 2 seconds. Multiply count by 30 to get RPM */
             _g_rs.tach_rpm[i] = _g_rs.tach_count[i] * 30;
@@ -113,7 +115,8 @@ int main(void)
     sys_runstate_t *rs = &_g_rs;
     sys_config_t *config = &_g_cfg;
 
-    wdt_enable(WDTO_4S);
+    wdt_enable(WDTO_2S);
+    wdt_reset();
     g_irq_enable();
     io_init();
     timer0_init();
@@ -142,14 +145,19 @@ int main(void)
     for (i = 0; i < MAX_SENSORS; i++)
         rs->temp_result[i] = 0;
 
-    for (i = 0; i < MAXFANS; i++)
+    for (i = 0; i < MAX_FANS; i++)
     {
         rs->tach_count[i] = 0;
         rs->tach_rpm[i] = 0;
     }
 
     /* Hysteresis lockout on so we don't start fans if temp is inside hysteresis window */
+#ifdef _SINGLEPATH_
     rs->hyst_lockout = 1;
+#else
+    for (i = 0; i < MAX_FANS; i++)
+        rs->hyst_lockout[i] = 1;
+#endif /* _SINGLEPATH_ */
     
     if (config->manual_assignment)
     {
@@ -160,15 +168,17 @@ int main(void)
     {
         uint8_t ow_device_type = DS18B20_FAMILY_CODE;
         if (onewire_search_devices(rs->sensor_ids, &ow_device_type, &rs->num_sensors, sizeof(ow_device_type)))
-            printf("\r\nHardware error searching for sensors\r\n");
-        else
             printf("\r\nFound %u of %u maximum sensors\r\n", rs->num_sensors, MAX_SENSORS);
+        else
+            printf("\r\nHardware error searching for sensors\r\n");
     }
 
     if (rs->num_sensors == 0)
         printf("No sensors found. Fans will be set to max\r\n");
 
-    printf("Using %u of %u maximum fans\r\n", config->num_fans, MAXFANS);
+#ifdef _SINGLEPATH_
+    printf("Using %u of %u maximum fans\r\n", config->num_fans, MAX_FANS);
+#endif /* _SINGLEPATH_ */
 
     timer0_start();
 	wdt_reset();
@@ -209,6 +219,8 @@ static void io_init(void)
     _g_rs.last_portb = F1TACH_PIN;
 }
 
+#ifdef _SINGLEPATH_
+
 static void main_process(sys_runstate_t *rs, sys_config_t *config)
 {
     uint8_t i;
@@ -219,8 +231,6 @@ static void main_process(sys_runstate_t *rs, sys_config_t *config)
         ds18x20_start_meas(rs->sensor_ids[i]);
 
     delay_10ms(76);
-
-    usart1_clear_oerr();
 
     for (i = 0; i < rs->num_sensors; i++)
     {
@@ -236,13 +246,13 @@ static void main_process(sys_runstate_t *rs, sys_config_t *config)
     
     rs->sensor_state = state_temp;
         
-    if (usart1_data_ready())
+    if (console_data_ready())
     {
-        char c = usart1_get();
+        char c = console_get();
         if (c == 4)
         {
             printf("\r\nCtrl+D received. Resetting...\r\n");
-            while (usart1_busy());
+            while (console_busy());
             reset();
         }
     }
@@ -344,6 +354,138 @@ static void stall_check(sys_runstate_t *rs, sys_config_t *config)
     }
 }
 
+void set_start_duty(sys_config_t *config)
+{
+    fan_set_duty(FAN1, config->fans_start);
+    fan_set_duty(FAN2, config->fans_start);
+}
+
+#else
+
+#define FAN1                 0
+#define FAN2                 1
+
+#define TEMP1                0
+#define TEMP2                1
+
+static void main_process(sys_runstate_t *rs, sys_config_t *config)
+{
+    uint8_t i;
+
+    for (i = 0; i < rs->num_sensors; i++)
+        ds18x20_start_meas(rs->sensor_ids[i]);
+
+    delay_10ms(76);
+
+    if (console_data_ready())
+    {
+        char c = console_get();
+        if (c == 4)
+        {
+            printf("\r\nCtrl+D received. Resetting...\r\n");
+            while (console_busy());
+            reset();
+        }
+    }
+    
+    if (rs->num_sensors == 0)
+    {
+        fan_set_duty(FAN1, config->fan1_max);
+        print_fan(FAN1, rs->tach_rpm[0], 1);
+        print_duty(config->fan1_max);
+            
+        if (config->fan2_enabled)
+        {
+            fan_set_duty(FAN2, config->fan2_max);
+            print_fan(FAN2, rs->tach_rpm[1], 0);
+            print_duty(config->fan2_max);
+        }
+    }
+    if (rs->num_sensors > 0)
+    {
+        if (ds18x20_read_decicelsius(rs->sensor_ids[TEMP1], &rs->temp_result[0]))
+        {
+            uint8_t duty1 = calc_pwm_duty(rs->temp_result[0], config->fan1_max, config->fan1_min, config->temp1_max,
+                    config->temp1_min, config->temp1_hyst, config->fan1_minoff, &rs->hyst_lockout[0]);
+
+            fan_set_duty(FAN1, duty1);
+            print_temp(TEMP1, rs->temp_result[0], config->temp1_desc, 1);
+            print_fan(FAN1, rs->tach_rpm[0], 0);
+            print_duty(duty1);
+
+            if (rs->num_sensors == 1 && config->fan2_enabled)
+            {
+                uint8_t duty2 = calc_pwm_duty(rs->temp_result[0], config->fan2_max, config->fan2_min, config->temp2_max,
+                        config->temp2_min, config->temp2_hyst, config->fan2_minoff, &rs->hyst_lockout[1]);
+
+                fan_set_duty(FAN2, duty2);
+                print_fan(FAN2, rs->tach_rpm[1], 0);
+                print_duty(duty2);
+            }
+        }
+        else
+        {
+            printf("Failed to read sensor 1. Setting to max\r\n");
+            fan_set_duty(FAN1, config->fan1_max);
+
+            if (rs->num_sensors == 1 && config->fan2_enabled)
+                fan_set_duty(FAN2, config->fan2_max);
+        }
+    }
+    /* If present, use sensor 2 to set fan 2 */
+    if (rs->num_sensors > 1 && config->fan2_enabled)
+    {
+        if (ds18x20_read_decicelsius(rs->sensor_ids[TEMP2], &rs->temp_result[1]))
+        {
+            uint8_t duty2 = calc_pwm_duty(rs->temp_result[1], config->fan2_max, config->fan2_min, config->temp2_max,
+                    config->temp2_min, config->temp2_hyst, config->fan2_minoff, &rs->hyst_lockout[1]);
+
+            fan_set_duty(FAN2, duty2);
+            print_temp(TEMP2, rs->temp_result[1], config->temp2_desc, 0);
+            print_fan(FAN2, rs->tach_rpm[1], 0);
+            print_duty(duty2);
+        }
+        else
+        {
+            printf("Failed to read sensor 2. Setting to max\r\n");
+            fan_set_duty(FAN2, config->fan2_max);
+        }
+    }
+}
+
+static void stall_check(sys_runstate_t *rs, sys_config_t *config)
+{
+   /* Check for fan 1 stall */
+    if (!config->fan1_minoff && (rs->tach_rpm[0] < config->fan1_minrpm))
+    {
+        printf("Fan 1 stall. Restarting...\r\n");
+        fan_set_duty(FAN1, config->fan1_max);
+        delay_10ms(150);
+        delay_10ms(150);
+    }
+
+    /* Check for fan 2 stall */
+    if (!config->fan2_minoff && config->fan2_enabled && (rs->tach_rpm[1] < config->fan2_minrpm))
+    {
+        printf("Fan 2 stall. Restarting...\r\n");
+        fan_set_duty(FAN2, config->fan2_max);
+        delay_10ms(150);
+        delay_10ms(150);
+    }
+}
+
+void set_start_duty(sys_config_t *config)
+{
+    fan_set_duty(FAN1, config->fan1_start);
+
+    if (config->fan2_enabled)
+        fan_set_duty(FAN2, config->fan2_start);
+    else
+        fan_set_duty(FAN2, 0);
+}
+
+#endif /* !_SINGLEPATH_ */
+
 static void print_temp(uint8_t temp, int16_t dec, const char *desc, uint8_t nl)
 {
     fixedpoint_sign(dec, dec);
@@ -428,19 +570,15 @@ static uint8_t calc_pwm_duty(int16_t measured, uint8_t pct_max, uint8_t pct_min,
     return result;
 }
 
-void set_start_duty(sys_config_t *config)
-{
-    fan_set_duty(FAN1, config->fans_start);
-    fan_set_duty(FAN2, config->fans_start);
-}
-
 uint8_t build_sensorlist_from_config(sys_runstate_t *rs, sys_config_t *config)
 {
     uint8_t i;
     memcpy(rs->sensor_ids[0], config->sensor1_addr, DS18X20_ROMCODE_SIZE);
     memcpy(rs->sensor_ids[1], config->sensor2_addr, DS18X20_ROMCODE_SIZE);
+#ifdef _SINGLEPATH_
     memcpy(rs->sensor_ids[2], config->sensor3_addr, DS18X20_ROMCODE_SIZE);
     memcpy(rs->sensor_ids[3], config->sensor4_addr, DS18X20_ROMCODE_SIZE);
+#endif /* _SINGLEPATH_ */
 
     for (i = 0; i < MAX_SENSORS; i++)
     {

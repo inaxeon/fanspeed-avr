@@ -23,31 +23,6 @@
 
 #include "timer.h"
 
-void timer1_init(void)
-{
-    TCCR1A = 0x00;
-
-    // CLK(i/o) prescaler 8
-    TCCR1B &= ~_BV(CS12);
-    TCCR1B |= _BV(CS11);
-    TCCR1B &= ~_BV(CS10);
-}
-
-void timer1_start(void)
-{
-    TIMSK1 |= _BV(TOIE1);
-}
-
-void timer1_stop()
-{
-    TIMSK1 &= ~_BV(TOIE1);
-}
-
-void timer1_reload(uint16_t val)
-{
-    TCNT1 = val;
-}
-
 void timer0_init(void)
 {
     TCCR0A = 0x00;

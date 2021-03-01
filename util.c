@@ -57,7 +57,6 @@ char wdt_getch(void)
 {
     while (!console_data_ready())
         wdt_reset();
-    console_clear_oerr();
     return console_get();
 }
 

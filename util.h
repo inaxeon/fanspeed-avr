@@ -31,7 +31,6 @@ char wdt_getch(void);
 void putch(char byte);
 int print_char(char byte, FILE *stream);
 
-
 #undef printf
 #define printf(fmt, ...) printf_P(PSTR(fmt) __VA_OPT__(,) __VA_ARGS__)
 #define sprintf(buf, fmt, ...) sprintf_P(buf, PSTR(fmt) __VA_OPT__(,) __VA_ARGS__)

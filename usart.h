@@ -34,7 +34,6 @@ bool usart1_busy(void);
 void usart1_put(char c);
 bool usart1_data_ready(void);
 char usart1_get(void);
-void usart1_clear_oerr(void);
 
 #endif /* _USART1_ */
 
