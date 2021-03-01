@@ -2,6 +2,8 @@
  *   File:   usart_buffered.h
  *   Author: Matthew Millman
  *
+ *   Multi-project AVR USART driver
+ * 
  *   Created on 22 May 2018, 16:32
  *
  *   This is free software: you can redistribute it and/or modify

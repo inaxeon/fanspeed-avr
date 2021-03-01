@@ -2,7 +2,7 @@
  *   File:   ow_bitbang.c
  *   Author: Matthew Millman
  *
- *   Fan speed controller. Single thermal path, OSS AVR Version.
+ *   Fan speed controller. OSS AVR Version.
  *
  *   Created on 26 August 2014, 20:27
  *   Ported from MPLAB XC8 project 17 December 2020, 07:54

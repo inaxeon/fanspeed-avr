@@ -2,7 +2,7 @@
  *   File:   i2c.h
  *   Author: Matthew Millman
  *
- *   FNP600/850/1000 Adapter Board
+ *   Multi-project AVR I2C driver
  *
  *   Created on 12 August 2015, 12:02
  *
