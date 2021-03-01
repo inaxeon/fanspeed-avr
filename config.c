@@ -145,7 +145,7 @@ void configuration_bootprompt(sys_config_t *config)
     }
 }
 
-#ifdef _SINGLEPATH_
+#ifdef _SINGLEZONE_
 
 static void do_show(sys_config_t *config)
 {
@@ -411,7 +411,7 @@ static void default_configuration(sys_config_t *config)
     memset(config->sensor4_addr, 0x00, OW_ROMCODE_SIZE);
 }
 
-#else /* _SINGLEPATH_ */
+#else /* _SINGLEZONE_ */
 
 static void do_show(sys_config_t *config)
 {
@@ -682,7 +682,7 @@ static void default_configuration(sys_config_t *config)
     memset(config->sensor2_addr, 0x00, OW_ROMCODE_SIZE);
 }
 
-#endif /* !_SINGLEPATH_ */
+#endif /* !_SINGLEZONE_ */
 
 static void do_readtemp(void)
 {

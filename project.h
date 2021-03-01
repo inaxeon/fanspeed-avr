@@ -25,7 +25,7 @@
 // High level features
 
 // Uncomment to enable single thermal zone build
-//#define _SINGLEPATH_
+//#define _SINGLEZONE_
 
 // Uncomment to use DS2482 onewire bus master instead of bitbang
 //#define _OW_DS2482_
@@ -34,7 +34,7 @@
 
 #define MAX_DESC             16
 #define MAX_FANS             2
-#ifdef _SINGLEPATH_
+#ifdef _SINGLEZONE_
 #define MAX_SENSORS          4
 #else
 #define MAX_SENSORS          2
@@ -52,7 +52,7 @@
 
 // Constants (which shouldn't be changed)
 
-#ifdef _SINGLEPATH_
+#ifdef _SINGLEZONE_
 #define CONFIG_MAGIC         0x4644
 #else
 #define CONFIG_MAGIC         0x4643

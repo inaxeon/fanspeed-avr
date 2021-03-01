@@ -52,7 +52,7 @@ typedef struct {
     uint8_t last_portb;
     uint16_t tach_count[MAX_FANS];
     uint16_t tach_rpm[MAX_FANS];
-#ifdef _SINGLEPATH_
+#ifdef _SINGLEZONE_
     uint8_t hyst_lockout;
 #else
     uint8_t hyst_lockout[MAX_FANS];
@@ -152,12 +152,12 @@ int main(void)
     }
 
     /* Hysteresis lockout on so we don't start fans if temp is inside hysteresis window */
-#ifdef _SINGLEPATH_
+#ifdef _SINGLEZONE_
     rs->hyst_lockout = 1;
 #else
     for (i = 0; i < MAX_FANS; i++)
         rs->hyst_lockout[i] = 1;
-#endif /* _SINGLEPATH_ */
+#endif /* _SINGLEZONE_ */
     
     if (config->manual_assignment)
     {
@@ -176,9 +176,9 @@ int main(void)
     if (rs->num_sensors == 0)
         printf("No sensors found. Fans will be set to max\r\n");
 
-#ifdef _SINGLEPATH_
+#ifdef _SINGLEZONE_
     printf("Using %u of %u maximum fans\r\n", config->num_fans, MAX_FANS);
-#endif /* _SINGLEPATH_ */
+#endif /* _SINGLEZONE_ */
 
     timer0_start();
 	wdt_reset();
@@ -219,7 +219,7 @@ static void io_init(void)
     _g_rs.last_portb = F1TACH_PIN;
 }
 
-#ifdef _SINGLEPATH_
+#ifdef _SINGLEZONE_
 
 static void main_process(sys_runstate_t *rs, sys_config_t *config)
 {
@@ -484,7 +484,7 @@ void set_start_duty(sys_config_t *config)
         fan_set_duty(FAN2, 0);
 }
 
-#endif /* !_SINGLEPATH_ */
+#endif /* !_SINGLEZONE_ */
 
 static void print_temp(uint8_t temp, int16_t dec, const char *desc, uint8_t nl)
 {
@@ -575,10 +575,10 @@ uint8_t build_sensorlist_from_config(sys_runstate_t *rs, sys_config_t *config)
     uint8_t i;
     memcpy(rs->sensor_ids[0], config->sensor1_addr, OW_ROMCODE_SIZE);
     memcpy(rs->sensor_ids[1], config->sensor2_addr, OW_ROMCODE_SIZE);
-#ifdef _SINGLEPATH_
+#ifdef _SINGLEZONE_
     memcpy(rs->sensor_ids[2], config->sensor3_addr, OW_ROMCODE_SIZE);
     memcpy(rs->sensor_ids[3], config->sensor4_addr, OW_ROMCODE_SIZE);
-#endif /* _SINGLEPATH_ */
+#endif /* _SINGLEZONE_ */
 
     for (i = 0; i < MAX_SENSORS; i++)
     {

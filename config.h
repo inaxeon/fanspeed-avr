@@ -29,7 +29,7 @@
 
 typedef struct {
     uint16_t magic;
-#ifdef _SINGLEPATH_
+#ifdef _SINGLEZONE_
     uint8_t num_fans;
     uint8_t fans_max;
     uint8_t fans_min;
@@ -64,14 +64,14 @@ typedef struct {
     bool fan2_enabled;
     char temp1_desc[MAX_DESC];
     char temp2_desc[MAX_DESC];
-#endif /* _SINGLEPATH_ */
+#endif /* _SINGLEZONE_ */
     bool manual_assignment;
     uint8_t sensor1_addr[OW_ROMCODE_SIZE];
     uint8_t sensor2_addr[OW_ROMCODE_SIZE];
-#ifdef _SINGLEPATH_
+#ifdef _SINGLEZONE_
     uint8_t sensor3_addr[OW_ROMCODE_SIZE];
     uint8_t sensor4_addr[OW_ROMCODE_SIZE];
-#endif /* _SINGLEPATH_ */
+#endif /* _SINGLEZONE_ */
 } sys_config_t;
 
 void configuration_bootprompt(sys_config_t *config);
