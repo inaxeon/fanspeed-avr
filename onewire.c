@@ -1,5 +1,5 @@
 /*
- *   File:   ds18x20.c
+ *   File:   onewire.c
  *   Author: Matthew Millman
  *
  *   Created on 26 July 2016, 11:13
