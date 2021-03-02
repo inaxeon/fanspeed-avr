@@ -95,7 +95,6 @@ ISR(TIMER0_OVF_vect)
     if (_g_rs.tach_timeout == 200)
     {
         uint8_t i = 0;
-        IO_TOGGLE(SP2);
         for (i = 0; i < MAX_FANS; i++)
         {
             /* Sampled every 2 seconds. Multiply count by 30 to get RPM */
@@ -360,7 +359,7 @@ void set_start_duty(sys_config_t *config)
     fan_set_duty(FAN2, config->fans_start);
 }
 
-#else
+#else /* _SINGLEZONE_ */
 
 #define FAN1                 0
 #define FAN2                 1
@@ -390,6 +389,8 @@ static void main_process(sys_runstate_t *rs, sys_config_t *config)
     
     if (rs->num_sensors == 0)
     {
+        // No sensors case. Used fixed configuration.
+
         fan_set_duty(FAN1, config->fan1_max);
         print_fan(FAN1, rs->tach_rpm[0], 1);
         print_duty(config->fan1_max);
@@ -403,23 +404,27 @@ static void main_process(sys_runstate_t *rs, sys_config_t *config)
     }
     if (rs->num_sensors > 0)
     {
+        // At least one sensor, but only one fan case
+
         if (ds18x20_read_decicelsius(rs->sensor_ids[TEMP1], &rs->temp_result[0]))
         {
-            uint8_t duty1 = calc_pwm_duty(rs->temp_result[0], config->fan1_max, config->fan1_min, config->temp1_max,
-                    config->temp1_min, config->temp1_hyst, config->fan1_minoff, &rs->hyst_lockout[0]);
+            uint8_t duty1 = calc_pwm_duty(rs->temp_result[TEMP1], config->fan1_max, config->fan1_min, config->temp1_max,
+                    config->temp1_min, config->temp1_hyst, config->fan1_minoff, &rs->hyst_lockout[TEMP1]);
 
             fan_set_duty(FAN1, duty1);
-            print_temp(TEMP1, rs->temp_result[0], config->temp1_desc, 1);
-            print_fan(FAN1, rs->tach_rpm[0], 0);
+            print_temp(TEMP1, rs->temp_result[TEMP1], config->temp1_desc, 1);
+            print_fan(FAN1, rs->tach_rpm[FAN1], 0);
             print_duty(duty1);
 
             if (rs->num_sensors == 1 && config->fan2_enabled)
             {
-                uint8_t duty2 = calc_pwm_duty(rs->temp_result[0], config->fan2_max, config->fan2_min, config->temp2_max,
-                        config->temp2_min, config->temp2_hyst, config->fan2_minoff, &rs->hyst_lockout[1]);
+                // One sensor, but two fans. Calculate individual PWM duties from a single sensor using both sets of thresholds.
+
+                uint8_t duty2 = calc_pwm_duty(rs->temp_result[TEMP1], config->fan2_max, config->fan2_min, config->temp2_max,
+                        config->temp2_min, config->temp2_hyst, config->fan2_minoff, &rs->hyst_lockout[TEMP2]);
 
                 fan_set_duty(FAN2, duty2);
-                print_fan(FAN2, rs->tach_rpm[1], 0);
+                print_fan(FAN2, rs->tach_rpm[FAN2], 0);
                 print_duty(duty2);
             }
         }
@@ -432,17 +437,19 @@ static void main_process(sys_runstate_t *rs, sys_config_t *config)
                 fan_set_duty(FAN2, config->fan2_max);
         }
     }
-    /* If present, use sensor 2 to set fan 2 */
+
     if (rs->num_sensors > 1 && config->fan2_enabled)
     {
+        // Two sensors, two fans. Deal with the second sensor
+
         if (ds18x20_read_decicelsius(rs->sensor_ids[TEMP2], &rs->temp_result[1]))
         {
-            uint8_t duty2 = calc_pwm_duty(rs->temp_result[1], config->fan2_max, config->fan2_min, config->temp2_max,
-                    config->temp2_min, config->temp2_hyst, config->fan2_minoff, &rs->hyst_lockout[1]);
+            uint8_t duty2 = calc_pwm_duty(rs->temp_result[TEMP2], config->fan2_max, config->fan2_min, config->temp2_max,
+                    config->temp2_min, config->temp2_hyst, config->fan2_minoff, &rs->hyst_lockout[TEMP2]);
 
             fan_set_duty(FAN2, duty2);
-            print_temp(TEMP2, rs->temp_result[1], config->temp2_desc, 0);
-            print_fan(FAN2, rs->tach_rpm[1], 0);
+            print_temp(TEMP2, rs->temp_result[TEMP2], config->temp2_desc, 0);
+            print_fan(FAN2, rs->tach_rpm[FAN2], 0);
             print_duty(duty2);
         }
         else
@@ -456,21 +463,27 @@ static void main_process(sys_runstate_t *rs, sys_config_t *config)
 static void stall_check(sys_runstate_t *rs, sys_config_t *config)
 {
    /* Check for fan 1 stall */
-    if (!config->fan1_minoff && (rs->tach_rpm[0] < config->fan1_minrpm))
+    if (!config->fan1_minoff && (rs->tach_rpm[FAN1] < config->fan1_minrpm))
     {
         printf("Fan 1 stall. Restarting...\r\n");
         fan_set_duty(FAN1, config->fan1_max);
+        wdt_reset();
         delay_10ms(150);
+        wdt_reset();
         delay_10ms(150);
+        wdt_reset();
     }
 
     /* Check for fan 2 stall */
-    if (!config->fan2_minoff && config->fan2_enabled && (rs->tach_rpm[1] < config->fan2_minrpm))
+    if (!config->fan2_minoff && config->fan2_enabled && (rs->tach_rpm[FAN2] < config->fan2_minrpm))
     {
         printf("Fan 2 stall. Restarting...\r\n");
         fan_set_duty(FAN2, config->fan2_max);
+        wdt_reset();
         delay_10ms(150);
+        wdt_reset();
         delay_10ms(150);
+        wdt_reset();
     }
 }
 

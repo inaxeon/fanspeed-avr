@@ -35,8 +35,8 @@
 #define F2TACH             PC3
 #define F1PWM              PB1
 #define F2PWM              PB2
-#define F1ON               PD4
-#define F2ON               PD7
+#define F1ON               PD7
+#define F2ON               PD4
 #define ONEWIRE            PC1
 #define SP1                PB0
 #define SP2                PD5

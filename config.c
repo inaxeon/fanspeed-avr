@@ -428,16 +428,19 @@ static void do_show(sys_config_t *config)
             "\tfan1start .........: %u\r\n"
             "\tfan1minrpm ........: %u\r\n"
             "\tfan1minoff ........: %u\r\n"
+            "\r\n"
             "\tfan2enabled .......: %u\r\n"
             "\tfan2max ...........: %u\r\n"
             "\tfan2min ...........: %u\r\n"
             "\tfan2start .........: %u\r\n"
             "\tfan2minrpm ........: %u\r\n"
             "\tfan2minoff ........: %u\r\n"
+            "\r\n"
             "\ttemp1max ..........: %s%u.%u\r\n"
             "\ttemp1min ..........: %s%u.%u\r\n"
             "\ttemp1hyst .........: %u.%u\r\n"
-            "\ttemp1desc .........: %s\r\n\r\n"
+            "\ttemp1desc .........: %s\r\n"
+            "\r\n"
             "\ttemp2max ..........: %s%u.%u\r\n"
             "\ttemp2min ..........: %s%u.%u\r\n"
             "\ttemp2hyst .........: %u.%u\r\n"
@@ -515,9 +518,6 @@ static void do_help(void)
         "\tfan1minoff [0 or 1]\r\n"
         "\tfan2minoff [0 or 1]\r\n"
         "\t\tSet to '1' to power off fan below minimum temp\r\n\r\n"
-        "\tfan1inv [0 or 1]\r\n"
-        "\tfan2inv [0 or 1]\r\n"
-        "\t\tSet to '1' to invert PWM and on/off control for heating applications\r\n"
         "\t\tStall checking is not performed when set to '1'\r\n\r\n"
         "\ttemp1max [-55.0 to 125.0]\r\n"
         "\t\tSets the temperature at which fan is set to the maximum\r\n"
@@ -726,6 +726,9 @@ static void do_readtemp(void)
                 sensor_ids[i][6],
                 sensor_ids[i][7]
             );
+
+            if (sensor_ids[i][5] != 0x00 && sensor_ids[i][6] != 0x00)
+                printf("\tWARNING: Detected sensor is probably counterfeit\r\n");
         }
         else
         {
