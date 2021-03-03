@@ -32,20 +32,17 @@
 #include "crc8.h"
 #include "util.h"
 
-#define OW_SEARCH_FIRST 0xFF
-#define OW_PRESENCE_ERR 0xFF
-#define OW_DATA_ERR 0xFE
-#define OW_LAST_DEVICE 0x00
+#define OW_SEARCH_FIRST                 0xFF
+#define OW_PRESENCE_ERR                 0xFF
+#define OW_DATA_ERR                     0xFE
+#define OW_LAST_DEVICE                  0x00
 
-#define ds18b20_READ_ROM 0x33
-#define DS18B20_SP_SIZE 9
-#define ds18b20_READ 0xBE
-#define ds18b20_CONVERT_T 0x44
+#define ds18b20_READ_ROM                0x33
+#define DS18B20_SP_SIZE                 9
+#define ds18b20_READ                    0xBE
+#define ds18b20_CONVERT_T               0x44
 
-#define ds18b20_INVALID_DECICELSIUS 0x7FFF
-
-#define min(a,b) (((a)<(b))?(a):(b))
-#define max(a,b) (((a)>(b))?(a):(b))
+#define ds18b20_INVALID_DECICELSIUS     0x7FFF
 
 #ifdef _DS18B20_AUTHCHECK_
 static void ds18b20_print_array(uint8_t *data, int n, char sep);
@@ -84,7 +81,7 @@ static bool ds18b20_read_scratchpad(uint8_t *id, uint8_t *sp, uint8_t n)
     return true;
 }
 
-/* Convert scratchpad data to physical value in unit decicelsius */
+/* Convert scratchpad data to physical value in unit decicelsius. Default 12 bit conversion is assumed. */
 static int16_t ds18b20_raw_to_decicelsius(uint8_t *sp)
 {
     uint16_t measure;
@@ -176,7 +173,7 @@ void ds18b20_authenticity_check(uint8_t *addr)
 
     int fake_flags = 0;
 
-    ds18b20_print_array(addr, 8, '-');
+    ds18b20_print_array(addr, 8, ':');
 
     if (0 != crc8(addr, 8))
     {
@@ -190,7 +187,7 @@ void ds18b20_authenticity_check(uint8_t *addr)
     if ((addr[6] != 0) || (addr[5] != 0) || (addr[0] != 0x28))
     {
         fake_flags += 1;
-        printf(": ROM does not follow expected pattern 28-xx-xx-xx-xx-00-00-crc. Error.");
+        printf(": ROM does not follow expected pattern 28:XX:XX:XX:XX:00:00:CRC. Error.");
     }
     else
     {
@@ -274,10 +271,12 @@ void ds18b20_authenticity_check(uint8_t *addr)
     // set the resolution to 10 bit and modify alarm registers
     ow_bus_reset(&presense_detect);
     ow_select(addr);
+
     buffer4[0] = 0x4E;
     buffer4[1] = buffer0[2] ^ 0xff;
     buffer4[2] = buffer0[3] ^ 0xff;
     buffer4[3] = 0x3F;
+
     ow_write(buffer4, 4);
 
     if (!ds18b20_read_scratchpad(addr, buffer1, DS18B20_SP_SIZE))
@@ -332,10 +331,12 @@ void ds18b20_authenticity_check(uint8_t *addr)
     // set the resolution to 12 bit
     ow_bus_reset(&presense_detect);
     ow_select(addr);
+
     buffer4[0] = 0x4E;
     buffer4[1] = buffer0[2];
     buffer4[2] = buffer0[3];
     buffer4[3] = 0x7F;
+
     ow_write(buffer4, 4);
 
     if (!ds18b20_read_scratchpad(addr, buffer2, DS18B20_SP_SIZE))
@@ -386,8 +387,10 @@ void ds18b20_authenticity_check(uint8_t *addr)
         do
         {
             count--;
+
             if (count < 0)
                 break;
+
             // perform temperature conversion
             ow_bus_reset(&presense_detect);
             ow_select(addr);
@@ -455,17 +458,16 @@ void ds18b20_authenticity_check(uint8_t *addr)
     }
 }
 
-void ds18b20_classify_fake(uint8_t *addr)
+void ds18b20_classify_sensor(uint8_t *addr)
 {
     bool presense_detect;
     uint8_t buffer4[4];
 
     // dump ROM
-    ds18b20_print_array(addr, 8, '-');
+    ds18b20_print_array(addr, 8, ':');
+
     if (0 != crc8(addr, 8))
-    {
-      printf(" (CRC Error)");
-    }
+        printf(" (CRC Error)");
 
     printf(":");
 
@@ -477,16 +479,19 @@ void ds18b20_classify_fake(uint8_t *addr)
         if (r68 != 0xff)
         {
             int cpp = ds18b20_curve_param_prop(addr);
-            if (cpp == 1) printf(" Family A1 (Genuie Maxim)."); // unsigned and 3.8 oC range
-            else if (cpp == 2) printf(" Family A2 (Clone)."); // signed and 32 oC range
-            else if (cpp == -3) printf(" (Error reading scratchpad register [A].)");
+            if (cpp == 1)
+                printf(" Family A1 (Genuie Maxim)."); // unsigned and 3.8 oC range
+            else if (cpp == 2)
+                printf(" Family A2 (Clone)."); // signed and 32 oC range
+            else if (cpp == -3)
+                printf(" (Error reading scratchpad register [A].)");
             else if (cpp == -1)
             {
-          printf(" Family A, unknown subtype (0x93=");
-          ds18b20_print_hex(ds18b20_one_byte_return(addr, 0x93));
-          printf(", 0x68=");
-          ds18b20_print_hex(r68);
-          printf(").");
+                printf(" Family A, unknown subtype (0x93=");
+                ds18b20_print_hex(ds18b20_one_byte_return(addr, 0x93));
+                printf(", 0x68=");
+                ds18b20_print_hex(r68);
+                printf(").");
             }
             // cpp==0 or cpp==-2: these aren't Family A as we know them.
             if ((cpp == 1) || (cpp == 2) || (cpp == -1))
@@ -497,13 +502,15 @@ void ds18b20_classify_fake(uint8_t *addr)
 
     { // test for family B
         uint8_t r97 = ds18b20_one_byte_return(addr, 0x97);
-        if (r97 == 0x22) printf(" Family B1 (Clone).");
-        else if (r97 == 0x31) printf(" Family B2 (Clone).");
+        if (r97 == 0x22)
+            printf(" Family B1 (Clone).");
+        else if (r97 == 0x31)
+            printf(" Family B2 (Clone).");
         else if (r97 != 0xFF)
         {
-        printf(" Family B (Clone), unknown subtype (0x97=");
-        ds18b20_print_hex(r97);
-        printf(").");
+            printf(" Family B (Clone), unknown subtype (0x97=");
+            ds18b20_print_hex(r97);
+            printf(").");
         }
         if (r97 != 0xff)
             identified++;
@@ -512,14 +519,17 @@ void ds18b20_classify_fake(uint8_t *addr)
     { // test for family D
         uint8_t r8B = ds18b20_one_byte_return(addr, 0x8B);
         // mention if parasitic power is known not to work.
-        if (r8B == 0x06) printf(" Family D1 (Clone w/o parasitic power).");
-        else if (r8B == 0x02) printf(" Family D1 (Clone).");
-        else if (r8B == 0x00) printf(" Family D2 (Clone w/o parasitic power).");
+        if (r8B == 0x06)
+            printf(" Family D1 (Clone w/o parasitic power).");
+        else if (r8B == 0x02)
+            printf(" Family D1 (Clone).");
+        else if (r8B == 0x00)
+            printf(" Family D2 (Clone w/o parasitic power).");
         else if (r8B != 0xFF)
         {
-        printf(" Family D (Clone), unknown subtype (0x8B=");
-        ds18b20_print_hex(r8B);
-        printf(").");
+            printf(" Family D (Clone), unknown subtype (0x8B=");
+            ds18b20_print_hex(r8B);
+            printf(").");
         }
         if (r8B != 0xff)
             identified++;
@@ -564,25 +574,24 @@ void ds18b20_classify_fake(uint8_t *addr)
 
         if (cfg1 == cfg2)
         {
-        printf(" Family C (Clone).");
-        identified++;
+            printf(" Family C (Clone).");
+            identified++;
         }
         if (0)
         {
         err_C:
-        printf(" (Error reading scratchpad register [C].)");
+            printf(" (Error reading scratchpad register [C].)");
         }
     }
 
     if (identified == 0)
-      printf(" (Could not identify Family.)");
+        printf(" (Could not identify Family.)");
 
     if (identified > 1)
-      printf(" (Part may belong to a Family not seen in 2019.)");
+        printf(" (Part may belong to a Family not seen in 2019.)");
 
     printf("\r\n\r\n");
 }
-
 
 static void ds18b20_print_array(uint8_t *data, int n, char sep)
 {
@@ -604,9 +613,12 @@ static void ds18b20_send_reset(uint8_t *addr)
 {
     bool presense_detect;
     uint8_t buffer;
+
     ow_bus_reset(&presense_detect);
     ow_select(addr);
+
     buffer = 0x64;
+    
     ow_write(&buffer, 1);
 }
 
@@ -614,10 +626,12 @@ static uint8_t ds18b20_one_byte_return(uint8_t *addr, uint8_t cmd)
 {
     uint8_t buffer;
     bool presense_detect;
+
     ow_bus_reset(&presense_detect);
     ow_select(addr);
     ow_write(&cmd, 1);
     ow_read(&buffer, 1);
+
     return buffer;
 }
 
@@ -625,12 +639,14 @@ static uint8_t ds18b20_bit_invert(uint8_t a)
 {
     uint8_t b = 0;
     int i;
+
     for (i = 0; i < 8; i++)
     {
         b *= 2;
         b += (a & 0x01);
         a /= 2;
     }
+
     return b;
 }
 
@@ -650,9 +666,13 @@ static void ds18b20_get_trim_A(uint8_t *addr, uint8_t *trim1, uint8_t *trim2)
 {
     bool presense_detect;
     uint8_t buffer;
+    
     ow_bus_reset(&presense_detect);
+
     if (addr)
+    {
         ow_select(addr);
+    }
     else
     {
         buffer = 0xCC;
@@ -663,8 +683,11 @@ static void ds18b20_get_trim_A(uint8_t *addr, uint8_t *trim1, uint8_t *trim2)
     ow_write(&buffer, 1);
     ow_read(trim1, 1);
     ow_bus_reset(&presense_detect);
+
     if (addr)
+    {
         ow_select(addr);
+    }
     else
     {
         buffer = 0xCC;
@@ -680,15 +703,20 @@ static void ds18b20_set_trim_A(uint8_t *addr, uint8_t trim1, uint8_t trim2)
 {
     bool presense_detect;
     uint8_t buffer[2];
+
     ow_bus_reset(&presense_detect);
     ow_select(addr);
+    
     buffer[0] = 0x95;
     buffer[1] = trim1;
+
     ow_write(buffer, 2);
     ow_bus_reset(&presense_detect);
     ow_select(addr);
+
     buffer[0] = 0x63;
     buffer[1] = trim2;
+
     ow_write(buffer, 2);
     // don't store permanently, don't call reset
 }
@@ -696,6 +724,7 @@ static void ds18b20_set_trim_A(uint8_t *addr, uint8_t trim1, uint8_t trim2)
 static void ds18b20_get_trim_params_A(uint8_t *addr, uint16_t *offset_param_11bit, uint8_t *curve_param_5bit)
 {
     uint8_t trim1, trim2;
+
     ds18b20_get_trim_A(addr, &trim1, &trim2);
     ds18b20_trim2param(trim1, trim2, offset_param_11bit, curve_param_5bit);
 }
@@ -703,6 +732,7 @@ static void ds18b20_get_trim_params_A(uint8_t *addr, uint16_t *offset_param_11bi
 static void ds18b20_set_trim_params_A(uint8_t *addr, uint16_t offset_param_11bit, uint8_t curve_param_5bit)
 {
     uint8_t trim1, trim2;
+
     ds18b20_param2trim(offset_param_11bit, curve_param_5bit, &trim1, &trim2);
     ds18b20_set_trim_A(addr, trim1, trim2);
 }
@@ -711,10 +741,13 @@ static bool ds18b20_is_valid_A_scratchpad(uint8_t *buff)
 {
     if ((buff[4] != 0x7f) && (buff[4] != 0x5f) && (buff[4] != 0x3f) && (buff[4] != 0x1f))
         return false;
+
     if ((buff[0] == 0x50) && (buff[1] == 0x05) && (buff[6] == 0x0C))
         return true; // power-up
+
     if ((buff[0] == 0xff) && (buff[1] == 0x07) && (buff[6] == 0x0C))
         return true; // unsuccessful conversion
+
     return buff[6] == (0x10 - (buff[0] & 0x0f));
 }
 
@@ -722,8 +755,11 @@ static bool ds18b20_is_all_00(uint8_t *buff, int N)
 {
     int i;
     for (i = 0; i < N; i++)
+    {
         if (buff[i] != 0x00)
             return false;
+    }
+
     return true;
 }
 
@@ -731,18 +767,23 @@ static void ds18b20_trigger_convert(uint8_t *addr, uint8_t conf, uint16_t wait)
 {
     bool presense_detect;
     uint8_t buffer[4];
+
     ow_bus_reset(&presense_detect);
     ow_select(addr);
+    
     buffer[0] = 0x4E;
     buffer[1] = 0xaf;
     buffer[2] = 0xfe;
     buffer[3] = conf;
-    ow_write(buffer, 4);
 
+    ow_write(buffer, 4);
     ow_bus_reset(&presense_detect);
     ow_select(addr);
+
     buffer[0] = 0x44;
+
     ow_write(buffer, 1); // start conversion and keep data line high in case we need parasitic power
+
     for (uint16_t i = 0; i < wait; i++)
         _delay_ms(1);
 }
@@ -755,52 +796,67 @@ static int ds18b20_curve_param_prop(uint8_t *addr)
 
     ds18b20_set_trim_params_A(addr, off, 0x0f);
     ds18b20_trigger_convert(addr, 0x7f, 800);
+
     if (!ds18b20_read_scratchpad(addr, buff, DS18B20_SP_SIZE))
         ds18b20_read_scratchpad(addr, buff, DS18B20_SP_SIZE);
+
     if (0 != crc8(buff, 9))
         return -3;
+
     if (!ds18b20_is_valid_A_scratchpad(buff))
         return -2;
+
     int16_t r0f = buff[0] + 256 * buff[1];
     {
         // check if we can set and read trim parameters
         uint16_t o;
         uint8_t c;
+        
         ds18b20_get_trim_params_A(addr, &o, &c);
+
         if ((o != off) || (c != 0x0f))
             return 0;
     }
 
     ds18b20_set_trim_params_A(addr, off, 0x00);
     ds18b20_trigger_convert(addr, 0x7f, 800);
+
     if (!ds18b20_read_scratchpad(addr, buff, DS18B20_SP_SIZE))
         ds18b20_read_scratchpad(addr, buff, DS18B20_SP_SIZE);
+
     if (0 != crc8(buff, 9))
         return -3;
+
     if (!ds18b20_is_valid_A_scratchpad(buff))
         return -2;
+
     int16_t r00 = buff[0] + 256 * buff[1];
 
     ds18b20_set_trim_params_A(addr, off, 0x1f);
     ds18b20_trigger_convert(addr, 0x7f, 800);
     if (!ds18b20_read_scratchpad(addr, buff, DS18B20_SP_SIZE))
         ds18b20_read_scratchpad(addr, buff, DS18B20_SP_SIZE);
+
     if (0 != crc8(buff, 9))
         return -3;
+
     if (!ds18b20_is_valid_A_scratchpad(buff))
         return -2;
+
     int16_t r1f = buff[0] + 256 * buff[1];
 
     ds18b20_set_trim_params_A(addr, off, 0x10);
     ds18b20_trigger_convert(addr, 0x7f, 800);
     if (!ds18b20_read_scratchpad(addr, buff, DS18B20_SP_SIZE))
         ds18b20_read_scratchpad(addr, buff, DS18B20_SP_SIZE);
+
     if (0 != crc8(buff, 9))
         return -3;
+
     if (!ds18b20_is_valid_A_scratchpad(buff))
         return -2;
-    int16_t r10 = buff[0] + 256 * buff[1];
 
+    int16_t r10 = buff[0] + 256 * buff[1];
     int16_t mini = min(r00, min(r0f, min(r10, r1f)));
     int16_t maxi = max(r00, max(r0f, max(r10, r1f)));
     bool is_signed = (r0f - r10 > r1f - r00);
@@ -808,6 +864,7 @@ static int ds18b20_curve_param_prop(uint8_t *addr)
 
     if (is_signed && (maxi - mini > 20 * 16))
         return 2; // A2
+
     if (is_unsigned && (maxi - mini > 1 * 16) && (maxi - mini < 6 * 16))
         return 1; // A1
 

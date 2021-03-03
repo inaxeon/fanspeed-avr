@@ -760,13 +760,13 @@ static void do_authcheck(void)
     {
         wdt_reset();
         ds18b20_authenticity_check(sensor_ids[i]);
-        ds18b20_classify_fake(sensor_ids[i]);
+        ds18b20_classify_sensor(sensor_ids[i]);
     }
 
     wdt_reset();
     wdt_enable(WDTO_2S);
 
-    printf("See https://github.com/cpetrich/counterfeit_DS18B20 for more information\r\n");
+    printf("See https://github.com/cpetrich/counterfeit_DS18B20 for more information.\r\n");
     
 done:
     printf("\r\n");

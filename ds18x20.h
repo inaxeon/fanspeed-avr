@@ -28,6 +28,6 @@ bool ds18b20_start_meas(uint8_t *id);
 bool ds18b20_read_decicelsius(uint8_t *id, int16_t *decicelsius);
 bool ds18b20_search_sensors(uint8_t *count, uint8_t(*sensor_ids)[OW_ROMCODE_SIZE]);
 void ds18b20_authenticity_check(uint8_t *addr);
-void ds18b20_classify_fake(uint8_t *addr);
+void ds18b20_classify_sensor(uint8_t *addr);
 
 #endif /* __ds18b20_H__ */
