@@ -16,18 +16,18 @@
  *   along with this software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __DS18X20_H__
-#define __DS18X20_H__
+#ifndef __ds18b20_H__
+#define __ds18b20_H__
 
-#define DS18S20_FAMILY_CODE         0x10
 #define DS18B20_FAMILY_CODE         0x28
-#define DS1822_FAMILY_CODE          0x22
 
 #define DS18B20_TCONV_12BIT         750
 
-bool ds18x20_find_sensor(uint8_t *diff, uint8_t *id);
-bool ds18x20_start_meas(uint8_t *id);
-bool ds18x20_read_decicelsius(uint8_t *id, int16_t *decicelsius);
-bool ds18x20_search_sensors(uint8_t *count, uint8_t(*sensor_ids)[OW_ROMCODE_SIZE]);
+bool ds18b20_find_sensor(uint8_t *diff, uint8_t *id);
+bool ds18b20_start_meas(uint8_t *id);
+bool ds18b20_read_decicelsius(uint8_t *id, int16_t *decicelsius);
+bool ds18b20_search_sensors(uint8_t *count, uint8_t(*sensor_ids)[OW_ROMCODE_SIZE]);
+void ds18b20_authenticity_check(uint8_t *addr);
+void ds18b20_classify_fake(uint8_t *addr);
 
-#endif /* __DS18X20_H__ */
+#endif /* __ds18b20_H__ */

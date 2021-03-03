@@ -227,7 +227,7 @@ static void main_process(sys_runstate_t *rs, sys_config_t *config)
     uint8_t state_temp = 0;
 
     for (i = 0; i < rs->num_sensors; i++)
-        ds18x20_start_meas(rs->sensor_ids[i]);
+        ds18b20_start_meas(rs->sensor_ids[i]);
 
     delay_10ms(76);
 
@@ -235,7 +235,7 @@ static void main_process(sys_runstate_t *rs, sys_config_t *config)
     {
         int16_t reading_temp;
 
-        if (ds18x20_read_decicelsius(rs->sensor_ids[i], &reading_temp))
+        if (ds18b20_read_decicelsius(rs->sensor_ids[i], &reading_temp))
         {
             result = max_(result, reading_temp);
             rs->temp_result[i] = reading_temp;
@@ -372,7 +372,7 @@ static void main_process(sys_runstate_t *rs, sys_config_t *config)
     uint8_t i;
 
     for (i = 0; i < rs->num_sensors; i++)
-        ds18x20_start_meas(rs->sensor_ids[i]);
+        ds18b20_start_meas(rs->sensor_ids[i]);
 
     delay_10ms(76);
 
@@ -406,7 +406,7 @@ static void main_process(sys_runstate_t *rs, sys_config_t *config)
     {
         // At least one sensor, but only one fan case
 
-        if (ds18x20_read_decicelsius(rs->sensor_ids[TEMP1], &rs->temp_result[0]))
+        if (ds18b20_read_decicelsius(rs->sensor_ids[TEMP1], &rs->temp_result[0]))
         {
             uint8_t duty1 = calc_pwm_duty(rs->temp_result[TEMP1], config->fan1_max, config->fan1_min, config->temp1_max,
                     config->temp1_min, config->temp1_hyst, config->fan1_minoff, &rs->hyst_lockout[TEMP1]);
@@ -442,7 +442,7 @@ static void main_process(sys_runstate_t *rs, sys_config_t *config)
     {
         // Two sensors, two fans. Deal with the second sensor
 
-        if (ds18x20_read_decicelsius(rs->sensor_ids[TEMP2], &rs->temp_result[1]))
+        if (ds18b20_read_decicelsius(rs->sensor_ids[TEMP2], &rs->temp_result[1]))
         {
             uint8_t duty2 = calc_pwm_duty(rs->temp_result[TEMP2], config->fan2_max, config->fan2_min, config->temp2_max,
                     config->temp2_min, config->temp2_hyst, config->fan2_minoff, &rs->hyst_lockout[TEMP2]);

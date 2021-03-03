@@ -28,6 +28,7 @@
 #include <string.h>
 #include <util/delay.h>
 #include <avr/pgmspace.h>
+#include <avr/wdt.h>
 
 #include "config.h"
 #include "util.h"
@@ -83,6 +84,7 @@ static void save_configuration(sys_config_t *config);
 static void default_configuration(sys_config_t *config);
 static void do_readtemp(void);
 static int8_t parse_owid(uint8_t *param, char *arg);
+static void do_authcheck(void);
 
 uint8_t _g_max_history;
 uint8_t _g_show_history;
@@ -257,11 +259,7 @@ static void do_help(void)
         "\tfansminoff [0 or 1]\r\n"
         "\t\tSet to '1' to power off fan below minimum temp\r\n\r\n"
         "\t\tStall checking is not performed when set to '1'\r\n\r\n"
-#ifdef _6SENSOR_
-        "\tmintemps [0 to 2]\r\n"
-#else
-        "\tmintemps [0 to 6]\r\n"
-#endif
+        "\tmintemps [0 to 4]\r\n"
         "\t\tSets the number of expected temperature sensors\r\n\r\n"
         "\ttempmax [-55.0 to 125.0]\r\n"
         "\t\tSets the temperature at which fan is set to the maximum\r\n"
@@ -274,29 +272,19 @@ static void do_help(void)
         "\t\tuntil current temp is less than temp1min, minus temp1hyst\r\n\r\n"
         "\ttemp1desc [desc]\r\n"
         "\ttemp2desc [desc]\r\n"
-#ifdef _6SENSOR_
         "\ttemp3desc [desc]\r\n"
         "\ttemp4desc [desc]\r\n"
-        "\ttemp5desc [desc]\r\n"
-        "\ttemp6desc [desc]\r\n"
-#endif
         "\t\tSets descriptions (15 chars max)\r\n\r\n"
         "\treadtemp\r\n"
-#if defined(_I2C_MSSP_) || defined(_I2C_)
-        "\t\tReset internal I2C Bus\r\n\r\n"
-        "\ti2creset\r\n"
-#endif
         "\t\tProbe and read out all attached sensors\r\n\r\n"
+        "\tauthcheck\r\n"
+        "\t\tCheck authenticity of attached DS18B20 sensors\r\n\r\n"
         "\tmanualassignment [0 or 1]\r\n"
         "\t\tSet to '1' to enable manual assignment of sensor address-to-index\r\n\r\n"
         "\tsensor1addr [addr or 'none']\r\n"
         "\tsensor2addr [addr or 'none']\r\n"
-#ifdef _6SENSOR_
         "\tsensor3addr [addr or 'none']\r\n"
         "\tsensor4addr [addr or 'none']\r\n"
-        "\tsensor5addr [addr or 'none']\r\n"
-        "\tsensor6addr [addr or 'none']\r\n"
-#endif /* _6SENSOR_ */
         "\t\tSets addresses of sensors\r\n\r\n"
     , MAX_FANS);
 }
@@ -354,6 +342,12 @@ static inline int8_t configuration_prompt_handler(char *text, sys_config_t *conf
     else if (!stricmp(command, "sensor2addr")) {
         return parse_owid(config->sensor2_addr, arg);
     }
+    else if (!stricmp(command, "sensor3addr")) {
+        return parse_owid(config->sensor3_addr, arg);
+    }
+    else if (!stricmp(command, "sensor4addr")) {
+        return parse_owid(config->sensor4_addr, arg);
+    }
     else if (!stricmp(command, "save")) {
         save_configuration(config);
         printf("\r\nConfiguration saved.\r\n\r\n");
@@ -370,6 +364,9 @@ static inline int8_t configuration_prompt_handler(char *text, sys_config_t *conf
     }
     else if (!stricmp(command, "readtemp")) {
         do_readtemp();
+    }
+    else if (!stricmp(command, "authcheck")) {
+        do_authcheck();
     }
     else if (!stricmp(command, "show")) {
         do_show(config);
@@ -540,6 +537,8 @@ static void do_help(void)
         "\t\tSets descriptions (15 chars max)\r\n\r\n"
         "\treadtemp\r\n"
         "\t\tProbe and read out all attached sensors\r\n\r\n"
+        "\tauthcheck\r\n"
+        "\t\tCheck authenticity of attached DS18B20 sensors\r\n\r\n"
         "\tmanualassignment [0 or 1]\r\n"
         "\t\tSet to '1' to enable manual assignment of sensor address-to-index\r\n\r\n"
         "\tsensor1addr [addr or 'none']\r\n"
@@ -639,6 +638,9 @@ static inline int8_t configuration_prompt_handler(char *text, sys_config_t *conf
     else if (!stricmp(command, "readtemp")) {
         do_readtemp();
     }
+    else if (!stricmp(command, "authcheck")) {
+        do_authcheck();
+    }
     else if (!stricmp(command, "show")) {
         do_show(config);
     }
@@ -701,13 +703,13 @@ static void do_readtemp(void)
         goto done;
     
     for (i = 0; i < num_sensors; i++)
-        ds18x20_start_meas(sensor_ids[i]);
+        ds18b20_start_meas(sensor_ids[i]);
 
     delay_10ms(75);
 
     for (i = 0; i < num_sensors; i++)
     {
-        if (ds18x20_read_decicelsius(sensor_ids[i], &reading))
+        if (ds18b20_read_decicelsius(sensor_ids[i], &reading))
         {
             fixedpoint_sign(reading, reading);
 
@@ -726,9 +728,6 @@ static void do_readtemp(void)
                 sensor_ids[i][6],
                 sensor_ids[i][7]
             );
-
-            if (sensor_ids[i][5] != 0x00 && sensor_ids[i][6] != 0x00)
-                printf("\tWARNING: Detected sensor is probably counterfeit\r\n");
         }
         else
         {
@@ -739,6 +738,40 @@ static void do_readtemp(void)
 done:
     printf("\r\n");
 }
+
+static void do_authcheck(void)
+{
+    uint8_t i;
+    uint8_t num_sensors;
+    uint8_t sensor_ids[MAX_SENSORS][OW_ROMCODE_SIZE];
+    uint8_t ow_device_type = DS18B20_FAMILY_CODE;
+
+    if (onewire_search_devices(sensor_ids, &ow_device_type, &num_sensors, sizeof(ow_device_type)))
+        printf("\r\nFound %u of %u maximum sensors\r\n\r\n", num_sensors, MAX_SENSORS);
+    else
+        printf("\r\nHardware error searching for sensors\r\n");
+
+    if (!num_sensors)
+        goto done;
+    
+    wdt_enable(WDTO_8S);
+
+    for (i = 0; i < num_sensors; i++)
+    {
+        wdt_reset();
+        ds18b20_authenticity_check(sensor_ids[i]);
+        ds18b20_classify_fake(sensor_ids[i]);
+    }
+
+    wdt_reset();
+    wdt_enable(WDTO_2S);
+
+    printf("See https://github.com/cpetrich/counterfeit_DS18B20 for more information\r\n");
+    
+done:
+    printf("\r\n");
+}
+
 
 static uint8_t parse_param(void *param, uint8_t type, char *arg)
 {
