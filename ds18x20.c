@@ -37,12 +37,22 @@
 #define OW_DATA_ERR                     0xFE
 #define OW_LAST_DEVICE                  0x00
 
-#define ds18b20_READ_ROM                0x33
+#define DS18B20_READ_ROM                0x33
 #define DS18B20_SP_SIZE                 9
-#define ds18b20_READ                    0xBE
-#define ds18b20_CONVERT_T               0x44
+#define DS18B20_READ                    0xBE
+#define DS18B20_CONVERT_T               0x44
 
-#define ds18b20_INVALID_DECICELSIUS     0x7FFF
+#define DS18B20_CONF_REG                4
+#define DS18B20_9_BIT                   0
+#define DS18B20_10_BIT                  (1 << 5)
+#define DS18B20_11_BIT                  (1 << 6)
+#define DS18B20_12_BIT                  ((1 << 6) | (1 << 5))
+#define DS18B20_RES_MASK                ((1 << 6) | (1 << 5))
+#define DS18B20_9_BIT_UNDF              ((1 << 0) | (1 << 1) | (1 << 2))
+#define DS18B20_10_BIT_UNDF             ((1 << 0) | (1 << 1))
+#define DS18B20_11_BIT_UNDF             ((1 << 0))
+
+#define DS18B20_INVALID_DECICELSIUS     0x7FFF
 
 #ifdef _DS18B20_AUTHCHECK_
 static void ds18b20_print_array(uint8_t *data, int n, char sep);
@@ -64,7 +74,7 @@ static int ds18b20_curve_param_prop(uint8_t *addr);
 
 static bool ds18b20_read_scratchpad(uint8_t *id, uint8_t *sp, uint8_t n)
 {
-    uint8_t data = ds18b20_READ;
+    uint8_t data = DS18B20_READ;
 
     if (!ow_select(id))
         return false;
@@ -103,6 +113,23 @@ static int16_t ds18b20_raw_to_decicelsius(uint8_t *sp)
         negative = 0;
     }
 
+        /* Clear undefined bits for DS18B20 != 12bit resolution */
+    switch(sp[DS18B20_CONF_REG] & DS18B20_RES_MASK)
+    {
+    case DS18B20_9_BIT:
+        measure &= ~(DS18B20_9_BIT_UNDF);
+        break;
+    case DS18B20_10_BIT:
+        measure &= ~(DS18B20_10_BIT_UNDF);
+        break;
+    case DS18B20_11_BIT:
+        measure &= ~(DS18B20_11_BIT_UNDF);
+        break;
+    default:
+        /* 12 bit - all bits valid */
+        break;
+    }
+
     decicelsius = (measure >> 4);
     decicelsius *= 10;
 
@@ -119,7 +146,7 @@ static int16_t ds18b20_raw_to_decicelsius(uint8_t *sp)
         decicelsius = -decicelsius;
 
     if (/* decicelsius == 850 || */ decicelsius < -550 || decicelsius > 1250)
-        return ds18b20_INVALID_DECICELSIUS;
+        return DS18B20_INVALID_DECICELSIUS;
 
     return decicelsius;
 }
@@ -134,7 +161,7 @@ bool ds18b20_read_decicelsius(uint8_t *id, int16_t *decicelsius)
 
     ret = ds18b20_raw_to_decicelsius(sp);
 
-    if (ret == ds18b20_INVALID_DECICELSIUS)
+    if (ret == DS18B20_INVALID_DECICELSIUS)
         return false;
 
     *decicelsius = ret;
@@ -143,7 +170,7 @@ bool ds18b20_read_decicelsius(uint8_t *id, int16_t *decicelsius)
 
 bool ds18b20_start_meas(uint8_t *id)
 {
-    uint8_t data = ds18b20_CONVERT_T;
+    uint8_t data = DS18B20_CONVERT_T;
 
     if (!ow_select(id))
         return false;
@@ -155,6 +182,7 @@ bool ds18b20_start_meas(uint8_t *id)
 
 // Taken from https://github.com/cpetrich/counterfeit_DS18B20
 // Adapted to work outside of Arduino world
+
 void ds18b20_authenticity_check(uint8_t *addr)
 {
     bool presense_detect;
@@ -271,12 +299,10 @@ void ds18b20_authenticity_check(uint8_t *addr)
     // set the resolution to 10 bit and modify alarm registers
     ow_bus_reset(&presense_detect);
     ow_select(addr);
-
     buffer4[0] = 0x4E;
     buffer4[1] = buffer0[2] ^ 0xff;
     buffer4[2] = buffer0[3] ^ 0xff;
     buffer4[3] = 0x3F;
-
     ow_write(buffer4, 4);
 
     if (!ds18b20_read_scratchpad(addr, buffer1, DS18B20_SP_SIZE))
@@ -331,12 +357,10 @@ void ds18b20_authenticity_check(uint8_t *addr)
     // set the resolution to 12 bit
     ow_bus_reset(&presense_detect);
     ow_select(addr);
-
     buffer4[0] = 0x4E;
     buffer4[1] = buffer0[2];
     buffer4[2] = buffer0[3];
     buffer4[3] = 0x7F;
-
     ow_write(buffer4, 4);
 
     if (!ds18b20_read_scratchpad(addr, buffer2, DS18B20_SP_SIZE))
@@ -552,8 +576,10 @@ void ds18b20_classify_sensor(uint8_t *addr)
 
         if (!ds18b20_read_scratchpad(addr, buff, DS18B20_SP_SIZE))
             ds18b20_read_scratchpad(addr, buff, DS18B20_SP_SIZE);
+
         if (ds18b20_is_all_00(buff, 9) || (0 != crc8(buff, 9)))
             goto err_C;
+
         cfg1 = buff[4];
 
         ow_bus_reset(&presense_detect);
@@ -566,8 +592,10 @@ void ds18b20_classify_sensor(uint8_t *addr)
 
         if (!ds18b20_read_scratchpad(addr, buff, DS18B20_SP_SIZE))
             ds18b20_read_scratchpad(addr, buff, DS18B20_SP_SIZE);
+
         if (ds18b20_is_all_00(buff, 9) || (0 != crc8(buff, 9)))
             goto err_C;
+
         cfg2 = buff[4];
 
         ds18b20_send_reset(addr);
@@ -616,9 +644,7 @@ static void ds18b20_send_reset(uint8_t *addr)
 
     ow_bus_reset(&presense_detect);
     ow_select(addr);
-
     buffer = 0x64;
-    
     ow_write(&buffer, 1);
 }
 
@@ -857,8 +883,8 @@ static int ds18b20_curve_param_prop(uint8_t *addr)
         return -2;
 
     int16_t r10 = buff[0] + 256 * buff[1];
-    int16_t mini = min(r00, min(r0f, min(r10, r1f)));
-    int16_t maxi = max(r00, max(r0f, max(r10, r1f)));
+    int16_t mini = min_(r00, min_(r0f, min_(r10, r1f)));
+    int16_t maxi = max_(r00, max_(r0f, max_(r10, r1f)));
     bool is_signed = (r0f - r10 > r1f - r00);
     bool is_unsigned = (r0f - r10 < r1f - r00);
 

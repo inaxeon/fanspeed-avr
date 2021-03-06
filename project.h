@@ -26,10 +26,11 @@
 
 // Uncomment to enable single thermal zone build
 #define _SINGLEZONE_
-#define _DS18B20_AUTHCHECK_
 
 // Uncomment to use DS2482 onewire bus master instead of bitbang
 //#define _OW_DS2482_
+
+#define _DS18B20_AUTHCHECK_
 
 // Common limits
 

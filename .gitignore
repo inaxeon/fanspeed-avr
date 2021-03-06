@@ -2,3 +2,5 @@ deps/
 *.o
 *.elf
 *.hex
+!fanspeed-avr-dz.hex
+!fanspeed-avr-sz.hex

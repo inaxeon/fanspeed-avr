@@ -348,8 +348,11 @@ static void stall_check(sys_runstate_t *rs, sys_config_t *config)
         printf("Fan stall. Restarting...\r\n");
         fan_set_duty(FAN1, config->fans_max);
         fan_set_duty(FAN2, config->fans_max);
+        wdt_reset();
         delay_10ms(150);
+        wdt_reset();
         delay_10ms(150);
+        wdt_reset();
     }
 }
 
