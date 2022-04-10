@@ -7,10 +7,11 @@
 ##############################################################################
 
 # Fixes clash between windows and coreutils mkdir. Comment out the below line to compile on Linux
-COREUTILS  = C:/Projects/coreutils/bin/
+COREUTILS  = C:/Dev/compilers/coreutils/bin/
 
 DEVICE     = atmega328p
-PROGRAMMER = -c atmelice_isp -V
+#PROGRAMMER = -c atmelice_isp -V
+PROGRAMMER = -c stk500v2 -p COM1 -V
 SRCS       = main.c timer.c onewire.c ds2482.c ow_bitbang.c ds18x20.c config.c util.c usart_buffered.c i2c.c pwm.c crc8.c
 OBJS       = $(SRCS:.c=.o)
 FUSES      = -U lfuse:w:0xDF:m -U hfuse:w:0xD1:m -U efuse:w:0xFC:m

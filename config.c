@@ -147,8 +147,6 @@ void configuration_bootprompt(sys_config_t *config)
     }
 }
 
-#ifdef _SINGLEZONE_
-
 static void do_show(sys_config_t *config)
 {
     fixedpoint_sign(config->temp_max, temp_max);
@@ -160,7 +158,8 @@ static void do_show(sys_config_t *config)
             "\tfansmax ...........: %u\r\n"
             "\tfansmin ...........: %u\r\n"
             "\tfansstart .........: %u\r\n"
-            "\tfansminrpm ........: %u\r\n"
+            "\toncount ...........: %u\r\n"
+            "\toffcount ..........: %u\r\n"
             "\tfansminoff ........: %u\r\n"
             "\r\n"
             "\tmintemps ..........: %u\r\n"
@@ -182,6 +181,7 @@ static void do_show(sys_config_t *config)
             config->fans_min,
             config->fans_start,
             config->fans_minrpm,
+            config->fans_maxrpm,
             config->fans_minoff,
             config->min_temps,
             fixedpoint_arg(config->temp_max, temp_max),
@@ -254,8 +254,10 @@ static void do_help(void)
         "\tfansstart [0 to 100]\r\n"
         "\t\tSets the duty cycle to use between reset and first calculation\r\n"
         "\t\tand when in the configuration prompt\r\n\r\n"
-        "\tfansminrpm [0 to 65535]\r\n"
-        "\t\tSets the stall-restart threshold RPM for all fans\r\n\r\n"
+        "\toncount [0 to 65535]\r\n"
+        "\t\tFlow counter to switch on at\r\n\r\n"
+        "\toffcount [0 to 65535]\r\n"
+        "\t\tFlow counter to swithc off at\r\n\r\n"
         "\tfansminoff [0 or 1]\r\n"
         "\t\tSet to '1' to power off fan below minimum temp\r\n\r\n"
         "\t\tStall checking is not performed when set to '1'\r\n\r\n"
@@ -309,8 +311,11 @@ static inline int8_t configuration_prompt_handler(char *text, sys_config_t *conf
     else if (!stricmp(command, "fansstart")) {
         return parse_param(&config->fans_start, PARAM_U8_PCT, arg);
     }
-    else if (!stricmp(command, "fansminrpm")) {
+    else if (!stricmp(command, "oncount")) {
         return parse_param(&config->fans_minrpm, PARAM_U16, arg);
+    }
+    else if (!stricmp(command, "offcount")) {
+        return parse_param(&config->fans_maxrpm, PARAM_U16, arg);
     }
     else if (!stricmp(command, "mintemps")) {
         return parse_param(&config->min_temps, PARAM_U8_TCNT, arg);
@@ -322,7 +327,7 @@ static inline int8_t configuration_prompt_handler(char *text, sys_config_t *conf
         return parse_param(&config->temp_min, PARAM_I16_1DP_TEMP, arg);
     }
     else if (!stricmp(command, "temphyst")) {
-        return parse_param(&config->temp_hyst, PARAM_U16_1DP_TEMPMAX, arg);
+        return parse_param(&config->temp_hyst, PARAM_U16, arg);
     }
     else if (!stricmp(command, "fansminoff")) {
         return parse_param(&config->fans_minoff, PARAM_U8_BIT, arg);
@@ -392,6 +397,7 @@ static void default_configuration(sys_config_t *config)
     config->fans_min = DEF_PCT_MIN;
     config->fans_start = DEF_PCT_MIN;
     config->fans_minrpm = DEF_MIN_RPM;
+    config->fans_maxrpm = DEF_MIN_RPM;
     config->temp_min = DEF_TEMP_MIN;
     config->temp_max = DEF_TEMP_MAX;
     config->temp_hyst = 0;
@@ -408,293 +414,15 @@ static void default_configuration(sys_config_t *config)
     memset(config->sensor4_addr, 0x00, OW_ROMCODE_SIZE);
 }
 
-#else /* _SINGLEZONE_ */
-
-static void do_show(sys_config_t *config)
-{
-    fixedpoint_sign(config->temp1_max, temp1_max);
-    fixedpoint_sign(config->temp1_min, temp1_min);
-
-    fixedpoint_sign(config->temp2_max, temp2_max);
-    fixedpoint_sign(config->temp2_min, temp2_min);
-
-    printf(
-            "\r\nCurrent configuration:\r\n\r\n"
-            "\tfan1max ...........: %u\r\n"
-            "\tfan1min ...........: %u\r\n"
-            "\tfan1start .........: %u\r\n"
-            "\tfan1minrpm ........: %u\r\n"
-            "\tfan1minoff ........: %u\r\n"
-            "\r\n"
-            "\tfan2enabled .......: %u\r\n"
-            "\tfan2max ...........: %u\r\n"
-            "\tfan2min ...........: %u\r\n"
-            "\tfan2start .........: %u\r\n"
-            "\tfan2minrpm ........: %u\r\n"
-            "\tfan2minoff ........: %u\r\n"
-            "\r\n"
-            "\ttemp1max ..........: %s%u.%u\r\n"
-            "\ttemp1min ..........: %s%u.%u\r\n"
-            "\ttemp1hyst .........: %u.%u\r\n"
-            "\ttemp1desc .........: %s\r\n"
-            "\r\n"
-            "\ttemp2max ..........: %s%u.%u\r\n"
-            "\ttemp2min ..........: %s%u.%u\r\n"
-            "\ttemp2hyst .........: %u.%u\r\n"
-            "\ttemp2desc .........: %s\r\n"
-            "\r\n"
-            "\tmanualassignment ..: %u\r\n"
-            "\tsensor1addr .......: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X\r\n"
-            "\tsensor2addr .......: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X\r\n",
-            config->fan1_max,
-            config->fan1_min,
-            config->fan1_start,
-            config->fan1_minrpm,
-            config->fan1_minoff,
-            config->fan2_enabled,
-            config->fan2_max,
-            config->fan2_min,
-            config->fan2_start,
-            config->fan2_minrpm,
-            config->fan2_minoff,
-            fixedpoint_arg(config->temp1_max, temp1_max),
-            fixedpoint_arg(config->temp1_min, temp1_min),
-            fixedpoint_arg_u(config->temp1_hyst),
-            config->temp1_desc,
-            fixedpoint_arg(config->temp2_max, temp2_max),
-            fixedpoint_arg(config->temp2_min, temp2_min),
-            fixedpoint_arg_u(config->temp2_hyst),
-            config->temp2_desc,
-            config->manual_assignment,
-            config->sensor1_addr[0],
-            config->sensor1_addr[1],
-            config->sensor1_addr[2],
-            config->sensor1_addr[3],
-            config->sensor1_addr[4],
-            config->sensor1_addr[5],
-            config->sensor1_addr[6],
-            config->sensor1_addr[7],
-            config->sensor2_addr[0],
-            config->sensor2_addr[1],
-            config->sensor2_addr[2],
-            config->sensor2_addr[3],
-            config->sensor2_addr[4],
-            config->sensor2_addr[5],
-            config->sensor2_addr[6],
-            config->sensor2_addr[7]
-        );
-
-    printf("\r\n");
-}
-
-static void do_help(void)
-{
-    printf(
-        "\r\nCommands:\r\n\r\n"
-        "\tshow\r\n"
-        "\t\tShow current configuration\r\n\r\n"
-        "\tdefault\r\n"
-        "\t\tLoad the default configuration\r\n\r\n"
-        "\tsave\r\n"
-        "\t\tSave current configuration\r\n\r\n"
-        "\texit\r\n"
-        "\t\tExit this menu and start\r\n\r\n"
-        "\tfan1max [0 to 100]\r\n"
-        "\tfan2max [0 to 100]\r\n"
-        "\t\tSets the maximum duty cycle for fan\r\n\r\n"
-        "\tfan1min [0 to 100]\r\n"
-        "\tfan2min [0 to 100]\r\n"
-        "\t\tSets the minimum duty cycle for fan\r\n\r\n"
-        "\tfan1start [0 to 100]\r\n"
-        "\tfan2start [0 to 100]\r\n"
-        "\t\tSets the duty cycle to use between reset and first calculation\r\n"
-        "\t\tand when in the configuration prompt\r\n\r\n"
-        "\tfan1minrpm [0 to 65535]\r\n"
-        "\tfan2minrpm [0 to 65535]\r\n"
-        "\t\tSets the stall-restart threshold RPM for fan\r\n\r\n"
-        "\tfan1minoff [0 or 1]\r\n"
-        "\tfan2minoff [0 or 1]\r\n"
-        "\t\tSet to '1' to power off fan below minimum temp\r\n\r\n"
-        "\t\tStall checking is not performed when set to '1'\r\n\r\n"
-        "\ttemp1max [-55.0 to 125.0]\r\n"
-        "\t\tSets the temperature at which fan is set to the maximum\r\n"
-        "\t\tconfigured duty cycle\r\n\r\n"
-        "\ttemp1min [-55.0 to 125.0]\r\n"
-        "\t\tSets the temperature threshold at which fan starts to\r\n"
-        "\t\tincrease from the minimum configured duty cycle\r\n\r\n"
-        "\ttemp1hyst [0 to 180.0]\r\n"
-        "\t\tSets hysteresis when using 'minoff'. The fan will not switch off\r\n"
-        "\t\tuntil current temp is less than temp1min, minus temp1hyst\r\n\r\n"
-        "\ttemp2max [-55.0 to 125.0]\r\n"
-        "\ttemp2min [-55.0 to 125.0]\r\n"
-        "\ttemp2hyst [0 to 180.0]\r\n"
-        "\t\tConfiguration for sensor 2 will apply to fan 2 if it is\r\n"
-        "\t\tconnected. Otherwise fan 2 uses sensor 1 with temp2max/min/hyst\r\n\r\n"
-        "\tfan2enabled [0 or 1]\r\n"
-        "\t\tSet to '1' if fan 2 is connected\r\n\r\n"
-        "\ttemp1desc [desc]\r\n"
-        "\ttemp2desc [desc]\r\n"
-        "\t\tSets descriptions (15 chars max)\r\n\r\n"
-        "\treadtemp\r\n"
-        "\t\tProbe and read out all attached sensors\r\n\r\n"
-        "\tauthcheck\r\n"
-        "\t\tCheck authenticity of attached DS18B20 sensors\r\n\r\n"
-        "\tmanualassignment [0 or 1]\r\n"
-        "\t\tSet to '1' to enable manual assignment of sensor address-to-index\r\n\r\n"
-        "\tsensor1addr [addr or 'none']\r\n"
-        "\tsensor2addr [addr or 'none']\r\n"
-        "\t\tSets addresses of sensors\r\n\r\n"
-    );
-}
-
-static inline int8_t configuration_prompt_handler(char *text, sys_config_t *config)
-{
-    char *command;
-    char *arg;
-
-    command = strtok(text, " ");
-    arg = strtok(NULL, "");
-        
-    if (!stricmp(command, "fan1max")) {
-        return parse_param(&config->fan1_max, PARAM_U8_PCT, arg);
-    }
-    else if (!stricmp(command, "fan1min")) {
-        return parse_param(&config->fan1_min, PARAM_U8_PCT, arg);
-    }
-    else if (!stricmp(command, "fan1start")) {
-        return parse_param(&config->fan1_start, PARAM_U8_PCT, arg);
-    }
-    else if (!stricmp(command, "fan1minrpm")) {
-        return parse_param(&config->fan1_minrpm, PARAM_U16, arg);
-    }
-    else if (!stricmp(command, "fan2max")) {
-        return parse_param(&config->fan2_max, PARAM_U8_PCT, arg);
-    }
-    else if (!stricmp(command, "fan2min")) {
-        return parse_param(&config->fan2_min, PARAM_U8_PCT, arg);
-    }
-    else if (!stricmp(command, "fan2start")) {
-        return parse_param(&config->fan2_start, PARAM_U8_PCT, arg);
-    }
-    else if (!stricmp(command, "fan2minrpm")) {
-        return parse_param(&config->fan2_minrpm, PARAM_U16, arg);
-    }
-    else if (!stricmp(command, "temp1max")) {
-        return parse_param(&config->temp1_max, PARAM_I16_1DP_TEMP, arg);
-    }
-    else if (!stricmp(command, "temp1min")) {
-        return parse_param(&config->temp1_min, PARAM_I16_1DP_TEMP, arg);
-    }
-    else if (!stricmp(command, "temp1hyst")) {
-        return parse_param(&config->temp1_hyst, PARAM_U16_1DP_TEMPMAX, arg);
-    }
-    else if (!stricmp(command, "temp2max")) {
-        return parse_param(&config->temp2_max, PARAM_I16_1DP_TEMP, arg);
-    }
-    else if (!stricmp(command, "temp2min")) {
-        return parse_param(&config->temp2_min, PARAM_I16_1DP_TEMP, arg);
-    }
-    else if (!stricmp(command, "temp2hyst")) {
-        return parse_param(&config->temp2_hyst, PARAM_U16_1DP_TEMPMAX, arg);
-    }
-    else if (!stricmp(command, "fan2enabled")) {
-        return parse_param(&config->fan2_enabled, PARAM_U8_BIT, arg);
-    }
-    else if (!stricmp(command, "fan1minoff")) {
-        return parse_param(&config->fan1_minoff, PARAM_U8_BIT, arg);
-    }
-    else if (!stricmp(command, "fan2minoff")) {
-        return parse_param(&config->fan2_minoff, PARAM_U8_BIT, arg);
-    }
-    else if (!stricmp(command, "temp1desc")) {
-        return parse_param(config->temp1_desc, PARAM_DESC, arg);
-    }
-    else if (!stricmp(command, "temp2desc")) {
-        return parse_param(config->temp2_desc, PARAM_DESC, arg);
-    }
-    else if (!stricmp(command, "manualassignment")) {
-        return parse_param(&config->manual_assignment, PARAM_U8_BIT, arg);
-    }
-    else if (!stricmp(command, "sensor1addr")) {
-        return parse_owid(config->sensor1_addr, arg);
-    }
-    else if (!stricmp(command, "sensor2addr")) {
-        return parse_owid(config->sensor2_addr, arg);
-    }
-    else if (!stricmp(command, "save")) {
-        save_configuration(config);
-        printf("\r\nConfiguration saved.\r\n\r\n");
-        return 0;
-    }
-    else if (!stricmp(command, "default")) {
-        default_configuration(config);
-        printf("\r\nDefault configuration loaded.\r\n\r\n");
-        return 0;
-    }
-    else if (!stricmp(command, "exit")) {
-        printf("\r\nStarting...\r\n");
-        return -1;
-    }
-    else if (!stricmp(command, "readtemp")) {
-        do_readtemp();
-    }
-    else if (!stricmp(command, "authcheck")) {
-        do_authcheck();
-    }
-    else if (!stricmp(command, "show")) {
-        do_show(config);
-    }
-    else if ((!stricmp(command, "help") || !stricmp(command, "?"))) {
-        do_help();
-        return 0;
-    }
-    else
-    {
-        printf("Error: no such command (%s)\r\n", command);
-        return 1;
-    }
-
-    return 0;
-}
-
-static void default_configuration(sys_config_t *config)
-{
-    config->magic = CONFIG_MAGIC;
-    config->fan1_max = DEF_PCT_MAX;
-    config->fan1_min = DEF_PCT_MIN;
-    config->fan1_start = DEF_PCT_MIN;
-    config->fan1_minrpm = DEF_MIN_RPM;
-    config->fan2_max = DEF_PCT_MAX;
-    config->fan2_min = DEF_PCT_MIN;
-    config->fan2_start = DEF_PCT_MIN;
-    config->fan2_minrpm = DEF_MIN_RPM;
-    config->temp1_min = DEF_TEMP_MIN;
-    config->temp1_max = DEF_TEMP_MAX;
-    config->temp1_hyst = 0;
-    config->temp2_min = DEF_TEMP_MIN;
-    config->temp2_max = DEF_TEMP_MAX;
-    config->temp2_hyst = 0;
-    config->fan2_enabled = false;
-    config->fan1_minoff = false;
-    config->fan2_minoff = false;
-    config->temp1_desc[0] = 0;
-    config->temp2_desc[0] = 0;
-    config->manual_assignment = false;
-    memset(config->sensor1_addr, 0x00, OW_ROMCODE_SIZE);
-    memset(config->sensor2_addr, 0x00, OW_ROMCODE_SIZE);
-}
-
-#endif /* !_SINGLEZONE_ */
-
 static void do_readtemp(void)
 {
     uint8_t i;
     uint8_t num_sensors;
     uint8_t sensor_ids[MAX_SENSORS][OW_ROMCODE_SIZE];
     int16_t reading;
-    uint8_t ow_device_type = DS18B20_FAMILY_CODE;
+    uint8_t ow_device_type[2] = { DS18S20_FAMILY_CODE, DS18B20_FAMILY_CODE };
 
-    if (onewire_search_devices(sensor_ids, &ow_device_type, &num_sensors, sizeof(ow_device_type)))
+    if (onewire_search_devices(sensor_ids, ow_device_type, &num_sensors, sizeof(ow_device_type)))
         printf("\r\nFound %u of %u maximum sensors\r\n", num_sensors, MAX_SENSORS);
     else
         printf("\r\nHardware error searching for sensors\r\n");
@@ -744,9 +472,9 @@ static void do_authcheck(void)
     uint8_t i;
     uint8_t num_sensors;
     uint8_t sensor_ids[MAX_SENSORS][OW_ROMCODE_SIZE];
-    uint8_t ow_device_type = DS18B20_FAMILY_CODE;
+    uint8_t ow_device_type[2] = { DS18S20_FAMILY_CODE, DS18B20_FAMILY_CODE };
 
-    if (onewire_search_devices(sensor_ids, &ow_device_type, &num_sensors, sizeof(ow_device_type)))
+    if (onewire_search_devices(sensor_ids, ow_device_type, &num_sensors, sizeof(ow_device_type)))
         printf("\r\nFound %u of %u maximum sensors\r\n\r\n", num_sensors, MAX_SENSORS);
     else
         printf("\r\nHardware error searching for sensors\r\n");

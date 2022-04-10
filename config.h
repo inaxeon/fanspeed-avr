@@ -35,6 +35,7 @@ typedef struct {
     uint8_t fans_min;
     uint8_t fans_start;
     uint16_t fans_minrpm;
+    uint16_t fans_maxrpm;
     bool fans_minoff;
     uint8_t min_temps;
     int16_t temp_min;

@@ -92,7 +92,7 @@ static bool ds18b20_read_scratchpad(uint8_t *id, uint8_t *sp, uint8_t n)
 }
 
 /* Convert scratchpad data to physical value in unit decicelsius. Default 12 bit conversion is assumed. */
-static int16_t ds18b20_raw_to_decicelsius(uint8_t *sp)
+static int16_t ds18b20_raw_to_decicelsius(uint8_t *sp, uint8_t familycode)
 {
     uint16_t measure;
     uint8_t negative;
@@ -100,6 +100,15 @@ static int16_t ds18b20_raw_to_decicelsius(uint8_t *sp)
     uint16_t fract;
 
     measure = sp[0] | (sp[1] << 8);
+    printf("%02X %02X %02X %02X %02X %02X %02X %02X %02X\r\n", sp[0], sp[1], sp[2], sp[3], sp[4], sp[5], sp[6], sp[7], sp[8]);
+
+    if (familycode == DS18S20_FAMILY_CODE)
+    {   /* 9 -> 12 bit if 18S20 */
+        /* Extended measurements for DS18S20 contributed by Carsten Foss */
+        measure &= (uint16_t)0xfffe;   /* Discard LSB, needed for later extended precicion calc */
+        measure <<= 3;                 /* Convert to 12-bit, now degrees are in 1/16 degrees units */
+        measure += (16 - sp[6]) - 4;   /* Add the compensation and remember to subtract 0.25 degree (4/16) */
+    }
 
     /* Check for negative */
     if (measure & 0x8000)
@@ -159,7 +168,7 @@ bool ds18b20_read_decicelsius(uint8_t *id, int16_t *decicelsius)
     if (!ds18b20_read_scratchpad(id, sp, DS18B20_SP_SIZE))
         return false;
 
-    ret = ds18b20_raw_to_decicelsius(sp);
+    ret = ds18b20_raw_to_decicelsius(sp, id[0]);
 
     if (ret == DS18B20_INVALID_DECICELSIUS)
         return false;

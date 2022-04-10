@@ -20,6 +20,7 @@
 #define __ds18b20_H__
 
 #define DS18B20_FAMILY_CODE         0x28
+#define DS18S20_FAMILY_CODE         0x10
 
 #define DS18B20_TCONV_12BIT         750
 
